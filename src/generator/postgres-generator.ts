@@ -295,14 +295,8 @@ export class PostgresDataGenerator extends BaseDataGenerator {
             const colName = ref.slice(1, -1);
             const colRef = escapePostgresIdentifier(colName);
             // Replace {col} with concatenation: ... || col || ...
-            expr = expr.replace(
-              `'{${colName}}'`,
-              `' || ${colRef} || '`
-            );
-            expr = expr.replace(
-              `{${colName}}`,
-              `' || ${colRef} || '`
-            );
+            expr = expr.replace(`'{${colName}}'`, `' || ${colRef} || '`);
+            expr = expr.replace(`{${colName}}`, `' || ${colRef} || '`);
           }
           // Clean up empty string concatenations
           expr = expr.replace(/^'' \|\| /, "").replace(/ \|\| ''$/, "");
@@ -316,7 +310,7 @@ export class PostgresDataGenerator extends BaseDataGenerator {
         case "mutate": {
           // Random string mutation
           const { probability, operations } = t;
-          
+
           // Build mutation expressions for each operation
           const mutationExprs: Record<MutationOperation, string> = {
             replace: `overlay(${escapedCol} placing 'X' from (floor(random() * length(${escapedCol})) + 1)::int for 1)`,

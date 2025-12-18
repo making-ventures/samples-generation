@@ -244,6 +244,7 @@ interface GenerateResult {
 #### Batching Transformations
 
 Transformations use a two-level array for efficiency:
+
 - **Outer array**: Each element becomes a separate UPDATE statement (sequential)
 - **Inner array**: Transformations combined into a single UPDATE (parallel SET clauses)
 
@@ -281,12 +282,13 @@ await generator.generate({
 ```
 
 This generates SQL like:
+
 ```sql
 -- First batch
 UPDATE users SET email = lower(first_name || '.' || last_name || '@example.com');
 
 -- Second batch (combined)
-UPDATE users SET 
+UPDATE users SET
   first_name = CASE WHEN random() < 0.1 THEN overlay(...) ELSE first_name END,
   last_name = CASE WHEN random() < 0.1 THEN overlay(...) ELSE last_name END;
 ```

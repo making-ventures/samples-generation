@@ -353,7 +353,9 @@ export class ClickHouseDataGenerator extends BaseDataGenerator {
               const threshold = (i + 1) / operations.length;
               // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
               const op = operations[i]!;
-              conditions.push(`rand() / 4294967295.0 < ${String(threshold)}, ${mutationExprs[op]}`);
+              conditions.push(
+                `rand() / 4294967295.0 < ${String(threshold)}, ${mutationExprs[op]}`
+              );
             }
             // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
             const lastOp = operations[operations.length - 1]!;
@@ -375,6 +377,7 @@ export class ClickHouseDataGenerator extends BaseDataGenerator {
       query: updateSql,
       clickhouse_settings: {
         wait_end_of_query: 1,
+        mutations_sync: "2", // Wait for all replicas
       },
     });
   }

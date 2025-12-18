@@ -308,14 +308,8 @@ export class SQLiteDataGenerator extends BaseDataGenerator {
             const colName = ref.slice(1, -1);
             const colRef = escapeId(colName);
             // Replace {col} with concatenation
-            expr = expr.replace(
-              `'{${colName}}'`,
-              `' || ${colRef} || '`
-            );
-            expr = expr.replace(
-              `{${colName}}`,
-              `' || ${colRef} || '`
-            );
+            expr = expr.replace(`'{${colName}}'`, `' || ${colRef} || '`);
+            expr = expr.replace(`{${colName}}`, `' || ${colRef} || '`);
           }
           // Clean up empty string concatenations
           expr = expr.replace(/^'' \|\| /, "").replace(/ \|\| ''$/, "");
