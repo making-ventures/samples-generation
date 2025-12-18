@@ -187,8 +187,8 @@ describe.each(generators.filter((g) => !g.skip))(
       }
     });
 
-    it("should respect choiceFromTable generator", async () => {
-      const choiceFromTableTest: TableConfig = {
+    it("should respect choiceByLookup generator", async () => {
+      const choiceByLookupTest: TableConfig = {
         name: "test_choice_from_table",
         columns: [
           {
@@ -200,23 +200,23 @@ describe.each(generators.filter((g) => !g.skip))(
             name: "last_name",
             type: "string",
             generator: {
-              kind: "choiceFromTable",
+              kind: "choiceByLookup",
               values: ["Smith", "Johnson", "Williams", "Brown", "Jones"],
             },
           },
         ],
       };
 
-      await generator.dropTable(choiceFromTableTest.name);
-      await generator.createTable(choiceFromTableTest);
+      await generator.dropTable(choiceByLookupTest.name);
+      await generator.createTable(choiceByLookupTest);
       await generator.generate({
-        table: choiceFromTableTest,
+        table: choiceByLookupTest,
         rowCount: 50,
         createTable: false,
         optimize: false,
       });
 
-      const rows = await generator.queryRows(choiceFromTableTest.name, 50);
+      const rows = await generator.queryRows(choiceByLookupTest.name, 50);
       expect(rows.length).toBe(50);
 
       // All values should be from the allowed list
@@ -226,7 +226,7 @@ describe.each(generators.filter((g) => !g.skip))(
         );
       }
 
-      await generator.dropTable(choiceFromTableTest.name);
+      await generator.dropTable(choiceByLookupTest.name);
     });
 
     it("should resume sequences when resumeSequences is true", async () => {

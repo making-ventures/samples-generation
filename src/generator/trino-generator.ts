@@ -4,7 +4,7 @@ import type {
   GeneratedRow,
   ColumnConfig,
   GeneratorConfig,
-  ChoiceFromTableGenerator,
+  ChoiceByLookupGenerator,
 } from "./types.js";
 import { BaseDataGenerator } from "./base-generator.js";
 import { escapeTrinoIdentifier } from "./escape.js";
@@ -80,7 +80,7 @@ export function generatorToTrinoExpr(
       // Use element_at with 1-based index
       return `element_at(ARRAY[${arr.join(", ")}], CAST(floor(random() * ${String(arr.length)}) + 1 AS INTEGER))`;
     }
-    case "choiceFromTable": {
+    case "choiceByLookup": {
       // Reference the CTE that will be added by generateNative
       const cteName = getLookupTableName(gen.values);
       return `element_at(${cteName}.arr, CAST(floor(random() * cardinality(${cteName}.arr)) + 1 AS INTEGER))`;
@@ -209,10 +209,10 @@ export class TrinoDataGenerator extends BaseDataGenerator {
   ): Promise<void> {
     const trino = this.getTrino();
 
-    // Collect choiceFromTable generators to create CTEs
+    // Collect choiceByLookup generators to create CTEs
     const lookupCtes: string[] = [];
     for (const col of table.columns) {
-      if (col.generator.kind === "choiceFromTable") {
+      if (col.generator.kind === "choiceByLookup") {
         const gen = col.generator;
         const cteName = getLookupTableName(gen.values);
         const valuesLiteral = gen.values
@@ -256,10 +256,10 @@ export class TrinoDataGenerator extends BaseDataGenerator {
           [
             ...new Set(
               table.columns
-                .filter((c) => c.generator.kind === "choiceFromTable")
+                .filter((c) => c.generator.kind === "choiceByLookup")
                 .map((c) =>
                   getLookupTableName(
-                    (c.generator as ChoiceFromTableGenerator).values
+                    (c.generator as ChoiceByLookupGenerator).values
                   )
                 )
             ),

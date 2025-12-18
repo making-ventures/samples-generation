@@ -79,7 +79,7 @@ export function generatorToClickHouseExpr(
       );
       return `[${arr.join(", ")}][toUInt32(rand() % ${String(arr.length)}) + 1]`;
     }
-    case "choiceFromTable": {
+    case "choiceByLookup": {
       // For ClickHouse, we'll use a subquery that loads the array once
       // The CTE approach doesn't work well, so we use arrayElement
       const cteName = getLookupTableName(gen.values);
@@ -179,10 +179,10 @@ export class ClickHouseDataGenerator extends BaseDataGenerator {
     const client = this.getClient();
     const escapedTableName = escapeClickHouseIdentifier(table.name);
 
-    // Collect choiceFromTable arrays for WITH clause
+    // Collect choiceByLookup arrays for WITH clause
     const arrayDefs: string[] = [];
     for (const col of table.columns) {
-      if (col.generator.kind === "choiceFromTable") {
+      if (col.generator.kind === "choiceByLookup") {
         const gen = col.generator;
         const arrName = `${getLookupTableName(gen.values)}_arr`;
         const valuesLiteral = gen.values

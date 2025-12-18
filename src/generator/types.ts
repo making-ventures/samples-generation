@@ -52,8 +52,8 @@ export interface UuidGenerator {
   kind: "uuid";
 }
 
-export interface ChoiceFromTableGenerator {
-  kind: "choiceFromTable";
+export interface ChoiceByLookupGenerator {
+  kind: "choiceByLookup";
   /** Array of values to choose from (will be stored in a lookup table) */
   values: string[];
 }
@@ -67,7 +67,7 @@ export type GeneratorConfig =
   | ConstantGenerator
   | DatetimeGenerator
   | UuidGenerator
-  | ChoiceFromTableGenerator;
+  | ChoiceByLookupGenerator;
 
 export interface ColumnConfig {
   name: string;

@@ -156,28 +156,28 @@ Example with nullable column:
 
 ### Value Generators
 
-| Generator         | Kind             | Options                   |
-| ----------------- | ---------------- | ------------------------- |
-| `sequence`        | Auto-increment   | `start`, `step`           |
-| `randomInt`       | Random integer   | `min`, `max`              |
-| `randomFloat`     | Random decimal   | `min`, `max`, `precision` |
-| `randomString`    | Random string    | `length`                  |
-| `choice`          | Pick from list   | `values`                  |
-| `choiceFromTable` | Optimized choice | `values` (large arrays)   |
-| `constant`        | Fixed value      | `value`                   |
-| `datetime`        | Random date      | `from`, `to`              |
-| `uuid`            | UUID v4          | -                         |
+| Generator        | Kind             | Options                   |
+| ---------------- | ---------------- | ------------------------- |
+| `sequence`       | Auto-increment   | `start`, `step`           |
+| `randomInt`      | Random integer   | `min`, `max`              |
+| `randomFloat`    | Random decimal   | `min`, `max`, `precision` |
+| `randomString`   | Random string    | `length`                  |
+| `choice`         | Pick from list   | `values`                  |
+| `choiceByLookup` | Optimized choice | `values` (large arrays)   |
+| `constant`       | Fixed value      | `value`                   |
+| `datetime`       | Random date      | `from`, `to`              |
+| `uuid`           | UUID v4          | -                         |
 
-#### `choiceFromTable` Generator
+#### `choiceByLookup` Generator
 
-Use `choiceFromTable` instead of `choice` when selecting from thousands of values. It uses CTEs with arrays for O(1) random selection, making it efficient for billions of rows:
+Use `choiceByLookup` instead of `choice` when selecting from thousands of values. It uses CTEs with arrays for O(1) random selection, making it efficient for billions of rows:
 
 ```typescript
 {
   name: "last_name",
   type: "string",
   generator: {
-    kind: "choiceFromTable",
+    kind: "choiceByLookup",
     values: ["Smith", "Johnson", "Williams", ...] // thousands of values
   }
 }

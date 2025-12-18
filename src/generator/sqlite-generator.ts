@@ -4,7 +4,7 @@ import type {
   GeneratedRow,
   ColumnConfig,
   GeneratorConfig,
-  ChoiceFromTableGenerator,
+  ChoiceByLookupGenerator,
 } from "./types.js";
 import { BaseDataGenerator } from "./base-generator.js";
 import { getLookupTableName } from "./utils.js";
@@ -79,7 +79,7 @@ export function generatorToSqliteExpr(
         .join(" ");
       return `CASE (abs(random()) % ${String(count)}) ${cases} END`;
     }
-    case "choiceFromTable": {
+    case "choiceByLookup": {
       // SQLite: use json_extract from the CTE json array
       const cteName = getLookupTableName(gen.values);
       const count = gen.values.length;
@@ -162,10 +162,10 @@ export class SQLiteDataGenerator extends BaseDataGenerator {
   ): Promise<void> {
     const db = this.getDb();
 
-    // Collect choiceFromTable generators for additional CTEs
+    // Collect choiceByLookup generators for additional CTEs
     const lookupCtes: string[] = [];
     for (const col of table.columns) {
-      if (col.generator.kind === "choiceFromTable") {
+      if (col.generator.kind === "choiceByLookup") {
         const gen = col.generator;
         const cteName = getLookupTableName(gen.values);
         // Store as JSON array
@@ -195,10 +195,10 @@ export class SQLiteDataGenerator extends BaseDataGenerator {
           [
             ...new Set(
               table.columns
-                .filter((c) => c.generator.kind === "choiceFromTable")
+                .filter((c) => c.generator.kind === "choiceByLookup")
                 .map((c) =>
                   getLookupTableName(
-                    (c.generator as ChoiceFromTableGenerator).values
+                    (c.generator as ChoiceByLookupGenerator).values
                   )
                 )
             ),

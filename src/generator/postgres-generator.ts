@@ -4,7 +4,7 @@ import type {
   GeneratedRow,
   ColumnConfig,
   GeneratorConfig,
-  ChoiceFromTableGenerator,
+  ChoiceByLookupGenerator,
 } from "./types.js";
 import { BaseDataGenerator } from "./base-generator.js";
 import { escapePostgresIdentifier } from "./escape.js";
@@ -77,7 +77,7 @@ export function generatorToPostgresExpr(
       );
       return `(ARRAY[${arr.join(", ")}])[floor(random() * ${String(arr.length)} + 1)::int]`;
     }
-    case "choiceFromTable": {
+    case "choiceByLookup": {
       // Reference the CTE that will be added by generateNative
       const cteName = getLookupTableName(gen.values);
       return `${cteName}.arr[floor(random() * array_length(${cteName}.arr, 1) + 1)::int]`;
@@ -164,10 +164,10 @@ export class PostgresDataGenerator extends BaseDataGenerator {
     const sql = this.getSql();
     const escapedTableName = escapePostgresIdentifier(table.name);
 
-    // Collect choiceFromTable generators to create CTEs
+    // Collect choiceByLookup generators to create CTEs
     const lookupCtes: string[] = [];
     for (const col of table.columns) {
-      if (col.generator.kind === "choiceFromTable") {
+      if (col.generator.kind === "choiceByLookup") {
         const gen = col.generator;
         const cteName = getLookupTableName(gen.values);
         const valuesLiteral = gen.values
@@ -205,10 +205,10 @@ export class PostgresDataGenerator extends BaseDataGenerator {
           [
             ...new Set(
               table.columns
-                .filter((c) => c.generator.kind === "choiceFromTable")
+                .filter((c) => c.generator.kind === "choiceByLookup")
                 .map((c) =>
                   getLookupTableName(
-                    (c.generator as ChoiceFromTableGenerator).values
+                    (c.generator as ChoiceByLookupGenerator).values
                   )
                 )
             ),

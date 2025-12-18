@@ -76,9 +76,9 @@ const generatorConfigs: {
     seqExpr: "n",
   },
   {
-    name: "choiceFromTable",
+    name: "choiceByLookup",
     config: {
-      kind: "choiceFromTable",
+      kind: "choiceByLookup",
       values: ["Smith", "Johnson", "Williams"],
     },
     seqExpr: "n",
@@ -159,10 +159,10 @@ describe("generatorToPostgresExpr", () => {
     ).toBe("null");
   });
 
-  it("should generate choiceFromTable expression", () => {
+  it("should generate choiceByLookup expression", () => {
     expect(
       generatorToPostgresExpr(
-        { kind: "choiceFromTable", values: ["Smith", "Johnson"] },
+        { kind: "choiceByLookup", values: ["Smith", "Johnson"] },
         "n"
       )
     ).toBe(
@@ -242,10 +242,10 @@ describe("generatorToClickHouseExpr", () => {
     ).toBe("99");
   });
 
-  it("should generate choiceFromTable expression", () => {
+  it("should generate choiceByLookup expression", () => {
     expect(
       generatorToClickHouseExpr(
-        { kind: "choiceFromTable", values: ["Smith", "Johnson"] },
+        { kind: "choiceByLookup", values: ["Smith", "Johnson"] },
         "n"
       )
     ).toBe(
@@ -327,10 +327,10 @@ describe("generatorToSqliteExpr", () => {
     );
   });
 
-  it("should generate choiceFromTable expression", () => {
+  it("should generate choiceByLookup expression", () => {
     expect(
       generatorToSqliteExpr(
-        { kind: "choiceFromTable", values: ["Smith", "Johnson"] },
+        { kind: "choiceByLookup", values: ["Smith", "Johnson"] },
         "n"
       )
     ).toBe(
@@ -408,10 +408,10 @@ describe("generatorToTrinoExpr", () => {
     expect(generatorToTrinoExpr({ kind: "constant", value: 0 }, "n")).toBe("0");
   });
 
-  it("should generate choiceFromTable expression", () => {
+  it("should generate choiceByLookup expression", () => {
     expect(
       generatorToTrinoExpr(
-        { kind: "choiceFromTable", values: ["Smith", "Johnson"] },
+        { kind: "choiceByLookup", values: ["Smith", "Johnson"] },
         "n"
       )
     ).toBe(

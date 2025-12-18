@@ -15,7 +15,7 @@ export type {
   ConstantGenerator,
   DatetimeGenerator,
   UuidGenerator,
-  ChoiceFromTableGenerator,
+  ChoiceByLookupGenerator,
 } from "./types.js";
 
 export { formatBytes, formatDuration, getLookupTableName } from "./utils.js";
