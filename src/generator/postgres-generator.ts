@@ -27,7 +27,7 @@ function columnTypeToPostgres(column: ColumnConfig): string {
     case "bigint":
       return "BIGINT";
     case "float":
-      return "NUMERIC";
+      return "DOUBLE PRECISION";
     case "string":
       return "TEXT";
     case "boolean":

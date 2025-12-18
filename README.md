@@ -127,15 +127,15 @@ new TrinoDataGenerator({
 
 ### Column Types
 
-| Type       | PostgreSQL | ClickHouse | SQLite  | Trino     |
-| ---------- | ---------- | ---------- | ------- | --------- |
-| `integer`  | INTEGER    | Int32      | INTEGER | INTEGER   |
-| `bigint`   | BIGINT     | Int64      | INTEGER | BIGINT    |
-| `float`    | NUMERIC    | Float64    | REAL    | DOUBLE    |
-| `string`   | TEXT       | String     | TEXT    | VARCHAR   |
-| `boolean`  | BOOLEAN    | Bool       | INTEGER | BOOLEAN   |
-| `datetime` | TIMESTAMP  | DateTime   | TEXT    | TIMESTAMP |
-| `date`     | DATE       | Date       | TEXT    | DATE      |
+| Type       | PostgreSQL       | ClickHouse | SQLite  | Trino     |
+| ---------- | ---------------- | ---------- | ------- | --------- |
+| `integer`  | INTEGER          | Int32      | INTEGER | INTEGER   |
+| `bigint`   | BIGINT           | Int64      | INTEGER | BIGINT    |
+| `float`    | DOUBLE PRECISION | Float64    | REAL    | DOUBLE    |
+| `string`   | TEXT             | String     | TEXT    | VARCHAR   |
+| `boolean`  | BOOLEAN          | Bool       | INTEGER | BOOLEAN   |
+| `datetime` | TIMESTAMP        | DateTime   | TEXT    | TIMESTAMP |
+| `date`     | DATE             | Date       | TEXT    | DATE      |
 
 ### Column Options
 
