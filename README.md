@@ -2,6 +2,10 @@
 
 Generate sample data for multiple databases with a unified interface.
 
+## Objective
+
+We often need to prefill tables during tests, checks, and measurements. These generators support filling tables with random data and applying transformations (template-based construction of values from other columns, lookups in another table, data corruptions, etc). May be used for simple prefill and for controlled corruptions for further testing entity resolution.
+
 ## Supported Databases
 
 - **PostgreSQL** - via `postgres` package
