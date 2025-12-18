@@ -160,13 +160,13 @@ describe("generatorToPostgresExpr", () => {
   });
 
   it("should generate choiceFromTable expression", () => {
-    const result = generatorToPostgresExpr(
-      { kind: "choiceFromTable", values: ["Smith", "Johnson"] },
-      "n"
-    );
-    // Should reference the lookup CTE with array indexing
-    expect(result).toMatch(
-      /_lookup_[a-f0-9]+\.arr\[floor\(random\(\) \* array_length\(_lookup_[a-f0-9]+\.arr, 1\) \+ 1\)::int\]/
+    expect(
+      generatorToPostgresExpr(
+        { kind: "choiceFromTable", values: ["Smith", "Johnson"] },
+        "n"
+      )
+    ).toBe(
+      "_lookup_581b7696.arr[floor(random() * array_length(_lookup_581b7696.arr, 1) + 1)::int]"
     );
   });
 });
@@ -243,13 +243,13 @@ describe("generatorToClickHouseExpr", () => {
   });
 
   it("should generate choiceFromTable expression", () => {
-    const result = generatorToClickHouseExpr(
-      { kind: "choiceFromTable", values: ["Smith", "Johnson"] },
-      "n"
-    );
-    // Should reference the array variable with modulo indexing
-    expect(result).toMatch(
-      /_lookup_[a-f0-9]+_arr\[toUInt32\(rand\(\) % length\(_lookup_[a-f0-9]+_arr\)\) \+ 1\]/
+    expect(
+      generatorToClickHouseExpr(
+        { kind: "choiceFromTable", values: ["Smith", "Johnson"] },
+        "n"
+      )
+    ).toBe(
+      "_lookup_581b7696_arr[toUInt32(rand() % length(_lookup_581b7696_arr)) + 1]"
     );
   });
 });
@@ -328,13 +328,13 @@ describe("generatorToSqliteExpr", () => {
   });
 
   it("should generate choiceFromTable expression", () => {
-    const result = generatorToSqliteExpr(
-      { kind: "choiceFromTable", values: ["Smith", "Johnson"] },
-      "n"
-    );
-    // Should reference the lookup CTE with JSON extraction
-    expect(result).toMatch(
-      /json_extract\(_lookup_[a-f0-9]+\.arr, '\$\[' \|\| \(abs\(random\(\)\) % 2\) \|\| '\]'\)/
+    expect(
+      generatorToSqliteExpr(
+        { kind: "choiceFromTable", values: ["Smith", "Johnson"] },
+        "n"
+      )
+    ).toBe(
+      "json_extract(_lookup_581b7696.arr, '$[' || (abs(random()) % 2) || ']')"
     );
   });
 });
@@ -409,13 +409,13 @@ describe("generatorToTrinoExpr", () => {
   });
 
   it("should generate choiceFromTable expression", () => {
-    const result = generatorToTrinoExpr(
-      { kind: "choiceFromTable", values: ["Smith", "Johnson"] },
-      "n"
-    );
-    // Should reference the lookup CTE with element_at indexing
-    expect(result).toMatch(
-      /element_at\(_lookup_[a-f0-9]+\.arr, CAST\(floor\(random\(\) \* cardinality\(_lookup_[a-f0-9]+\.arr\)\) \+ 1 AS INTEGER\)\)/
+    expect(
+      generatorToTrinoExpr(
+        { kind: "choiceFromTable", values: ["Smith", "Johnson"] },
+        "n"
+      )
+    ).toBe(
+      "element_at(_lookup_581b7696.arr, CAST(floor(random() * cardinality(_lookup_581b7696.arr)) + 1 AS INTEGER))"
     );
   });
 });
