@@ -237,9 +237,26 @@ interface GenerateResult {
   kind: "mutate",
   column: "name",
   probability: 0.1,  // 10% of rows get mutated
-  operations: ["replace", "delete", "insert"]  // First operation is used
+  operations: ["replace", "delete", "insert"]  // Random operation selected per row
 }
 ```
+
+**Lookup Transformation** - Assign values from another table via join:
+
+```typescript
+{
+  kind: "lookup",
+  column: "category_name",      // Column to update
+  fromTable: "categories",      // Source table
+  fromColumn: "name",           // Column to copy value from
+  joinOn: {
+    targetColumn: "category_id", // Column in target table
+    lookupColumn: "id"           // Column in source table to match
+  }
+}
+```
+
+> **Note:** For ClickHouse, lookup transformation uses a table swap approach (CREATE → INSERT SELECT with JOIN → RENAME) since ClickHouse doesn't support correlated subqueries in `ALTER TABLE UPDATE`.
 
 #### Batching Transformations
 

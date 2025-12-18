@@ -472,6 +472,21 @@ export class TrinoDataGenerator extends BaseDataGenerator {
           );
           break;
         }
+        case "lookup": {
+          // Lookup value from another table via join
+          // Trino uses correlated subquery
+          const lookupSchema = escapeTrinoIdentifier(this.config.schema);
+          const fromTable = escapeTrinoIdentifier(t.fromTable);
+          const fromCol = escapeTrinoIdentifier(t.fromColumn);
+          const targetJoinCol = escapeTrinoIdentifier(t.joinOn.targetColumn);
+          const lookupJoinCol = escapeTrinoIdentifier(t.joinOn.lookupColumn);
+          const fullLookupTable = `${this.escapedCatalog}.${lookupSchema}.${fromTable}`;
+
+          setClauses.push(
+            `${escapedCol} = (SELECT ${fromCol} FROM ${fullLookupTable} WHERE ${lookupJoinCol} = ${fullTableName}.${targetJoinCol})`
+          );
+          break;
+        }
       }
     }
 

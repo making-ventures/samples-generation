@@ -103,7 +103,36 @@ export interface MutateTransformation {
   operations: MutationOperation[];
 }
 
-export type Transformation = TemplateTransformation | MutateTransformation;
+/**
+ * Lookup transformation - set column value from another table via join.
+ *
+ * **Execution order note (ClickHouse)**: Due to ClickHouse limitations with
+ * correlated subqueries in ALTER TABLE UPDATE, lookup transformations are
+ * applied using a table swap approach and execute **before** template/mutate
+ * transformations in the same batch. If transformation order matters, place
+ * lookups in a separate postTransformations batch.
+ */
+export interface LookupTransformation {
+  kind: "lookup";
+  /** Column to update */
+  column: string;
+  /** Lookup table name */
+  fromTable: string;
+  /** Column in lookup table to get value from */
+  fromColumn: string;
+  /** Join condition */
+  joinOn: {
+    /** Column in target table to match */
+    targetColumn: string;
+    /** Column in lookup table to match */
+    lookupColumn: string;
+  };
+}
+
+export type Transformation =
+  | TemplateTransformation
+  | MutateTransformation
+  | LookupTransformation;
 
 export interface ColumnConfig {
   name: string;

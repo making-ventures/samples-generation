@@ -340,6 +340,20 @@ export class PostgresDataGenerator extends BaseDataGenerator {
           );
           break;
         }
+        case "lookup": {
+          // Lookup value from another table via join
+          // PostgreSQL supports UPDATE ... FROM ... WHERE syntax
+          const fromTable = escapePostgresIdentifier(t.fromTable);
+          const fromCol = escapePostgresIdentifier(t.fromColumn);
+          const targetJoinCol = escapePostgresIdentifier(t.joinOn.targetColumn);
+          const lookupJoinCol = escapePostgresIdentifier(t.joinOn.lookupColumn);
+
+          // Use subquery for simplicity (works with multiple lookups in same batch)
+          setClauses.push(
+            `${escapedCol} = (SELECT ${fromCol} FROM ${fromTable} WHERE ${lookupJoinCol} = ${escapedTable}.${targetJoinCol})`
+          );
+          break;
+        }
       }
     }
 

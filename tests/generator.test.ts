@@ -526,5 +526,208 @@ describe.each(generators.filter((g) => !g.skip))(
 
       await generator.dropTable(mutateMultiTable.name);
     });
+
+    it("should apply lookup transformation", { timeout: 30_000 }, async () => {
+      // Create a lookup table (source of values)
+      const lookupTable: TableConfig = {
+        name: "test_lookup_source",
+        columns: [
+          {
+            name: "id",
+            type: "integer",
+            generator: { kind: "sequence", start: 1 },
+          },
+          {
+            name: "category_name",
+            type: "string",
+            generator: {
+              kind: "choice",
+              values: ["Electronics", "Books", "Clothing"],
+            },
+          },
+        ],
+      };
+
+      // Create a target table that will lookup values
+      const targetTable: TableConfig = {
+        name: "test_lookup_target",
+        columns: [
+          {
+            name: "id",
+            type: "integer",
+            generator: { kind: "sequence", start: 1 },
+          },
+          {
+            name: "category_id",
+            type: "integer",
+            generator: { kind: "choice", values: [1, 2, 3] },
+          },
+          {
+            name: "category_name",
+            type: "string",
+            generator: { kind: "constant", value: "" },
+          },
+        ],
+      };
+
+      await generator.dropTable(lookupTable.name);
+      await generator.dropTable(targetTable.name);
+
+      // Create and populate lookup table
+      await generator.createTable(lookupTable);
+      await generator.generate({
+        table: lookupTable,
+        rowCount: 3,
+        createTable: false,
+        optimize: false,
+      });
+
+      // Create and populate target table with lookup transformation
+      await generator.createTable(targetTable);
+      await generator.generate({
+        table: targetTable,
+        rowCount: 10,
+        createTable: false,
+        optimize: false,
+        postTransformations: [
+          [
+            {
+              kind: "lookup",
+              column: "category_name",
+              fromTable: "test_lookup_source",
+              fromColumn: "category_name",
+              joinOn: {
+                targetColumn: "category_id",
+                lookupColumn: "id",
+              },
+            },
+          ],
+        ],
+      });
+
+      const lookupRows = await generator.queryRows(lookupTable.name, 3);
+      const targetRows = await generator.queryRows(targetTable.name, 10);
+
+      // Build a map of id -> category_name from lookup table
+      const lookupMap = new Map<number, string>();
+      for (const row of lookupRows) {
+        lookupMap.set(Number(row.id), String(row.category_name));
+      }
+
+      // Verify each target row has the correct category_name based on category_id
+      for (const row of targetRows) {
+        const categoryId = Number(row.category_id);
+        const expectedName = lookupMap.get(categoryId);
+        expect(row.category_name).toBe(expectedName);
+      }
+
+      await generator.dropTable(targetTable.name);
+      await generator.dropTable(lookupTable.name);
+    });
+
+    it("should apply lookups before template/mutate in same batch (ClickHouse behavior)", async () => {
+      // This test documents that lookup transformations execute BEFORE other
+      // transformations in the same batch due to ClickHouse's table swap approach.
+      // If order matters, use separate postTransformations batches.
+
+      const lookupTable: TableConfig = {
+        name: "test_order_lookup",
+        columns: [
+          {
+            name: "id",
+            type: "integer",
+            generator: { kind: "sequence", start: 1 },
+          },
+          {
+            name: "prefix",
+            type: "string",
+            generator: { kind: "constant", value: "LOOKED_UP" },
+          },
+        ],
+      };
+
+      const targetTable: TableConfig = {
+        name: "test_order_target",
+        columns: [
+          {
+            name: "id",
+            type: "integer",
+            generator: { kind: "sequence", start: 1 },
+          },
+          {
+            name: "lookup_id",
+            type: "integer",
+            generator: { kind: "constant", value: 1 },
+          },
+          {
+            name: "prefix",
+            type: "string",
+            generator: { kind: "constant", value: "INITIAL" },
+          },
+          {
+            name: "result",
+            type: "string",
+            generator: { kind: "constant", value: "" },
+          },
+        ],
+      };
+
+      await generator.dropTable(lookupTable.name);
+      await generator.dropTable(targetTable.name);
+
+      await generator.createTable(lookupTable);
+      await generator.generate({
+        table: lookupTable,
+        rowCount: 1,
+        createTable: false,
+        optimize: false,
+      });
+
+      await generator.createTable(targetTable);
+
+      // Apply lookup and template in the SAME batch
+      // Template references the 'prefix' column that lookup updates
+      await generator.generate({
+        table: targetTable,
+        rowCount: 5,
+        createTable: false,
+        optimize: false,
+        postTransformations: [
+          [
+            // Template declared first, but lookup executes first in ClickHouse
+            {
+              kind: "template",
+              column: "result",
+              template: "prefix={prefix}",
+            },
+            {
+              kind: "lookup",
+              column: "prefix",
+              fromTable: "test_order_lookup",
+              fromColumn: "prefix",
+              joinOn: {
+                targetColumn: "lookup_id",
+                lookupColumn: "id",
+              },
+            },
+          ],
+        ],
+      });
+
+      const rows = await generator.queryRows(targetTable.name, 5);
+
+      // In ClickHouse: lookup runs first, then template sees "LOOKED_UP"
+      // In Postgres/SQLite/Trino: transformations run in order, template sees "INITIAL"
+      for (const row of rows) {
+        expect(row.prefix).toBe("LOOKED_UP");
+        // Result depends on execution order:
+        // - ClickHouse: "prefix=LOOKED_UP" (lookup first)
+        // - Others: "prefix=INITIAL" (template first, then lookup overwrites prefix)
+        expect(["prefix=LOOKED_UP", "prefix=INITIAL"]).toContain(row.result);
+      }
+
+      await generator.dropTable(targetTable.name);
+      await generator.dropTable(lookupTable.name);
+    });
   }
 );

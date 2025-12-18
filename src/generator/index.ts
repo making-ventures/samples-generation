@@ -19,6 +19,7 @@ export type {
   Transformation,
   TemplateTransformation,
   MutateTransformation,
+  LookupTransformation,
 } from "./types.js";
 
 export { formatBytes, formatDuration, getLookupTableName } from "./utils.js";

@@ -6,6 +6,7 @@ import type {
   GeneratorConfig,
   Transformation,
   MutationOperation,
+  LookupTransformation,
 } from "./types.js";
 import { BaseDataGenerator } from "./base-generator.js";
 import { escapeClickHouseIdentifier } from "./escape.js";
@@ -368,8 +369,19 @@ export class ClickHouseDataGenerator extends BaseDataGenerator {
           );
           break;
         }
+        case "lookup": {
+          // ClickHouse ALTER TABLE UPDATE does not support correlated subqueries
+          // We need to use the table swap approach: CREATE AS + INSERT SELECT + RENAME
+          // Handle lookup transformations separately
+          await this.applyLookupTransformation(tableName, t);
+          // Don't add to setClauses - already handled
+          break;
+        }
       }
     }
+
+    // Only run ALTER TABLE UPDATE if there are non-lookup SET clauses
+    if (setClauses.length === 0) return;
 
     // ClickHouse uses ALTER TABLE UPDATE syntax
     const updateSql = `ALTER TABLE ${escapedTable} UPDATE ${setClauses.join(", ")} WHERE 1`;
@@ -379,6 +391,64 @@ export class ClickHouseDataGenerator extends BaseDataGenerator {
         wait_end_of_query: 1,
         mutations_sync: "2", // Wait for all replicas
       },
+    });
+  }
+
+  /**
+   * Apply a lookup transformation using ClickHouse's table swap approach.
+   * Since ClickHouse doesn't support correlated subqueries in ALTER TABLE UPDATE,
+   * we use: CREATE TABLE new -> INSERT SELECT with JOIN -> RENAME swap
+   */
+  private async applyLookupTransformation(
+    tableName: string,
+    t: LookupTransformation
+  ): Promise<void> {
+    const client = this.getClient();
+    const escapedTable = escapeClickHouseIdentifier(tableName);
+    const escapedCol = escapeClickHouseIdentifier(t.column);
+    const fromTable = escapeClickHouseIdentifier(t.fromTable);
+    const fromCol = escapeClickHouseIdentifier(t.fromColumn);
+    const targetJoinCol = escapeClickHouseIdentifier(t.joinOn.targetColumn);
+    const lookupJoinCol = escapeClickHouseIdentifier(t.joinOn.lookupColumn);
+
+    // Use unique suffix to avoid conflicts with concurrent runs
+    const uniqueSuffix = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    const tempTableName = `${tableName}_lookup_temp_${uniqueSuffix}`;
+    const oldTableName = `${tableName}_lookup_old_${uniqueSuffix}`;
+    const escapedTempTable = escapeClickHouseIdentifier(tempTableName);
+    const escapedOldTable = escapeClickHouseIdentifier(oldTableName);
+
+    // 1. Create new table with same structure
+    await client.command({
+      query: `CREATE TABLE ${escapedTempTable} AS ${escapedTable}`,
+      clickhouse_settings: { wait_end_of_query: 1 },
+    });
+
+    // 2. INSERT SELECT with LEFT JOIN, using REPLACE to update the lookup column
+    // The REPLACE syntax replaces the column value in the SELECT *
+    const insertSql = `
+      INSERT INTO ${escapedTempTable}
+      SELECT
+        t.* REPLACE (coalesce(s.${fromCol}, t.${escapedCol}) AS ${escapedCol})
+      FROM ${escapedTable} t
+      LEFT JOIN ${fromTable} s ON t.${targetJoinCol} = s.${lookupJoinCol}
+    `;
+    await client.command({
+      query: insertSql,
+      clickhouse_settings: { wait_end_of_query: 1 },
+    });
+
+    // 3. RENAME tables to swap (atomic operation)
+    // target -> target_old, target_new -> target
+    await client.command({
+      query: `RENAME TABLE ${escapedTable} TO ${escapedOldTable}, ${escapedTempTable} TO ${escapedTable}`,
+      clickhouse_settings: { wait_end_of_query: 1 },
+    });
+
+    // 4. Drop the old table
+    await client.command({
+      query: `DROP TABLE IF EXISTS ${escapedOldTable}`,
+      clickhouse_settings: { wait_end_of_query: 1 },
     });
   }
 }

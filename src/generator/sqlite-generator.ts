@@ -356,6 +356,19 @@ export class SQLiteDataGenerator extends BaseDataGenerator {
           );
           break;
         }
+        case "lookup": {
+          // Lookup value from another table via join
+          // SQLite uses correlated subquery
+          const fromTable = escapeId(t.fromTable);
+          const fromCol = escapeId(t.fromColumn);
+          const targetJoinCol = escapeId(t.joinOn.targetColumn);
+          const lookupJoinCol = escapeId(t.joinOn.lookupColumn);
+
+          setClauses.push(
+            `${escapedCol} = (SELECT ${fromCol} FROM ${fromTable} WHERE ${lookupJoinCol} = ${escapedTable}.${targetJoinCol})`
+          );
+          break;
+        }
       }
     }
 
