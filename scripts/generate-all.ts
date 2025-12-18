@@ -9,6 +9,7 @@ import {
 } from "../src/generator/index.js";
 
 // Run: npx tsx scripts/generate-all.ts
+// Run: ROW_COUNT=1000 npx tsx scripts/generate-all.ts
 // Run: GENERATE_CLICKHOUSE=1 GENERATE_TRINO=1 npx tsx scripts/generate-all.ts
 // Run: GENERATE_CLICKHOUSE=1 npx tsx scripts/generate-all.ts
 
@@ -35,9 +36,10 @@ const TABLE_CONFIG: TableConfig = {
   ],
 };
 
-// const ROW_COUNT = 1_000_000;
-// const ROW_COUNT = 100_000_000;
-const ROW_COUNT = 1_000_000_000;
+const DEFAULT_ROW_COUNT = 1_000_000_000;
+const ROW_COUNT = process.env.ROW_COUNT
+  ? parseInt(process.env.ROW_COUNT, 10)
+  : DEFAULT_ROW_COUNT;
 
 interface GeneratorEntry {
   name: string;

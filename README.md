@@ -394,14 +394,20 @@ await generator.optimize("users");
 ### Generate Data
 
 ```bash
-# Generate 1000 rows in all databases (requires docker-compose up)
+# Generate 1 billion rows in all databases (requires docker-compose up)
 npx tsx scripts/generate-all.ts
+
+# Specify row count
+ROW_COUNT=1000 npx tsx scripts/generate-all.ts
 
 # Generate for specific databases only
 GENERATE_SQLITE=1 npx tsx scripts/generate-all.ts
 GENERATE_POSTGRES=1 npx tsx scripts/generate-all.ts
 GENERATE_CLICKHOUSE=1 npx tsx scripts/generate-all.ts
 GENERATE_TRINO=1 npx tsx scripts/generate-all.ts
+
+# Combine options
+ROW_COUNT=10000 GENERATE_POSTGRES=1 npx tsx scripts/generate-all.ts
 ```
 
 ## Docker Compose
