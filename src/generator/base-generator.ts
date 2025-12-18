@@ -80,6 +80,13 @@ export abstract class BaseDataGenerator implements DataGenerator {
     } = options;
     const startTime = Date.now();
 
+    const tableLabel = table.description
+      ? `${table.name} (${table.description})`
+      : table.name;
+    console.log(
+      `[${this.name}] Generating: ${tableLabel} - ${String(rowCount)} rows`
+    );
+
     if (dropFirst) {
       await this.dropTable(table.name);
     }

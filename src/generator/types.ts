@@ -158,6 +158,8 @@ export interface ColumnConfig {
 
 export interface TableConfig {
   name: string;
+  /** Optional description for logging */
+  description?: string;
   columns: ColumnConfig[];
 }
 
