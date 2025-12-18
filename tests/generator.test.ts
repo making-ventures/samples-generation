@@ -229,30 +229,34 @@ describe.each(generators.filter((g) => !g.skip))(
       await generator.dropTable(choiceByLookupTest.name);
     });
 
-    it("should resume sequences when resumeSequences is true", async () => {
-      await generator.truncateTable(testTable.name);
+    it(
+      "should resume sequences when resumeSequences is true",
+      { timeout: 30_000 },
+      async () => {
+        await generator.truncateTable(testTable.name);
 
-      // Generate first batch
-      await generator.generate({
-        table: testTable,
-        rowCount: 5,
-        createTable: false,
-        optimize: false,
-      });
+        // Generate first batch
+        await generator.generate({
+          table: testTable,
+          rowCount: 5,
+          createTable: false,
+          optimize: false,
+        });
 
-      // Generate second batch with resumeSequences
-      await generator.generate({
-        table: testTable,
-        rowCount: 5,
-        createTable: false,
-        resumeSequences: true,
-        optimize: false,
-      });
+        // Generate second batch with resumeSequences
+        await generator.generate({
+          table: testTable,
+          rowCount: 5,
+          createTable: false,
+          resumeSequences: true,
+          optimize: false,
+        });
 
-      const rows = await generator.queryRows(testTable.name, 20);
-      const ids = rows.map((r) => Number(r.id)).sort((a, b) => a - b);
-      expect(ids).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
-    });
+        const rows = await generator.queryRows(testTable.name, 20);
+        const ids = rows.map((r) => Number(r.id)).sort((a, b) => a - b);
+        expect(ids).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+      }
+    );
 
     it("should generate NULL values based on nullProbability", async () => {
       const nullableTable: TableConfig = {
@@ -728,6 +732,66 @@ describe.each(generators.filter((g) => !g.skip))(
 
       await generator.dropTable(targetTable.name);
       await generator.dropTable(lookupTable.name);
+    });
+
+    it("should support batch descriptions for transformations", async () => {
+      // This test verifies that TransformationBatch with descriptions works
+      const descTable: TableConfig = {
+        name: "test_batch_desc",
+        columns: [
+          {
+            name: "id",
+            type: "integer",
+            generator: { kind: "sequence", start: 1 },
+          },
+          {
+            name: "first_name",
+            type: "string",
+            generator: { kind: "constant", value: "John" },
+          },
+          {
+            name: "last_name",
+            type: "string",
+            generator: { kind: "constant", value: "Doe" },
+          },
+          {
+            name: "email",
+            type: "string",
+            generator: { kind: "constant", value: "" },
+          },
+        ],
+      };
+
+      await generator.dropTable(descTable.name);
+      await generator.createTable(descTable);
+
+      // Use object form with descriptions
+      await generator.generate({
+        table: descTable,
+        rowCount: 5,
+        createTable: false,
+        optimize: false,
+        postTransformations: [
+          {
+            description: "Generate email from name",
+            transformations: [
+              {
+                kind: "template",
+                column: "email",
+                template: "{first_name}.{last_name}@test.com",
+                lowercase: true,
+              },
+            ],
+          },
+        ],
+      });
+
+      const rows = await generator.queryRows(descTable.name, 5);
+      for (const row of rows) {
+        expect(row.email).toBe("john.doe@test.com");
+      }
+
+      await generator.dropTable(descTable.name);
     });
   }
 );

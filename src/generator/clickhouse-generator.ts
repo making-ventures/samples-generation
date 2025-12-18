@@ -412,7 +412,7 @@ export class ClickHouseDataGenerator extends BaseDataGenerator {
     const lookupJoinCol = escapeClickHouseIdentifier(t.joinOn.lookupColumn);
 
     // Use unique suffix to avoid conflicts with concurrent runs
-    const uniqueSuffix = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    const uniqueSuffix = `${String(Date.now())}_${Math.random().toString(36).slice(2, 8)}`;
     const tempTableName = `${tableName}_lookup_temp_${uniqueSuffix}`;
     const oldTableName = `${tableName}_lookup_old_${uniqueSuffix}`;
     const escapedTempTable = escapeClickHouseIdentifier(tempTableName);

@@ -260,10 +260,57 @@ interface GenerateResult {
 
 #### Batching Transformations
 
-Transformations use a two-level array for efficiency:
+Transformations are organized in batches for efficiency:
 
-- **Outer array**: Each element becomes a separate UPDATE statement (sequential)
-- **Inner array**: Transformations combined into a single UPDATE (parallel SET clauses)
+- Each batch becomes a separate UPDATE statement (executed sequentially)
+- Transformations within a batch are combined into a single UPDATE
+- Batches support optional descriptions for logging and debugging
+
+**Simple array format** (backward compatible):
+
+```typescript
+postTransformations: [
+  [{ kind: "template", ... }],  // batch 1
+  [{ kind: "mutate", ... }],    // batch 2
+]
+```
+
+**Object format with description**:
+
+```typescript
+postTransformations: [
+  {
+    description: "Generate email addresses",
+    transformations: [
+      {
+        kind: "template",
+        column: "email",
+        template: "{first_name}.{last_name}@example.com",
+      },
+    ],
+  },
+  {
+    description: "Introduce data quality issues",
+    transformations: [
+      {
+        kind: "mutate",
+        column: "email",
+        probability: 0.1,
+        operations: ["replace"],
+      },
+    ],
+  },
+];
+```
+
+With descriptions, you'll see helpful logs:
+
+```
+[postgres] Applying transformations: Generate email addresses (1 transformation(s))
+[postgres] Applying transformations: Introduce data quality issues (1 transformation(s))
+```
+
+**Full example**:
 
 ```typescript
 await generator.generate({

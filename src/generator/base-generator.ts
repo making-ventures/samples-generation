@@ -5,8 +5,25 @@ import type {
   GenerateResult,
   GeneratedRow,
   Transformation,
+  TransformationBatchInput,
 } from "./types.js";
 import { formatBytes } from "./utils.js";
+
+/**
+ * Normalize a transformation batch input to get transformations and description
+ */
+function normalizeBatch(batch: TransformationBatchInput): {
+  transformations: Transformation[];
+  description?: string;
+} {
+  if (Array.isArray(batch)) {
+    return { transformations: batch };
+  }
+  return {
+    transformations: batch.transformations,
+    description: batch.description,
+  };
+}
 
 export abstract class BaseDataGenerator implements DataGenerator {
   abstract readonly name: string;
@@ -112,9 +129,16 @@ export abstract class BaseDataGenerator implements DataGenerator {
     let transformMs = 0;
     if (postTransformations.length > 0) {
       const transformStart = Date.now();
-      for (const batch of postTransformations) {
-        if (batch.length > 0) {
-          await this.applyTransformations(table.name, batch);
+      for (let i = 0; i < postTransformations.length; i++) {
+        const { transformations, description } = normalizeBatch(
+          postTransformations[i]! // eslint-disable-line @typescript-eslint/no-non-null-assertion
+        );
+        if (transformations.length > 0) {
+          const batchLabel = description ?? `batch ${String(i + 1)}`;
+          console.log(
+            `[${this.name}] Applying transformations: ${batchLabel} (${String(transformations.length)} transformation(s))`
+          );
+          await this.applyTransformations(table.name, transformations);
         }
       }
       transformMs = Date.now() - transformStart;
