@@ -204,8 +204,18 @@ export class TrinoDataGenerator extends BaseDataGenerator {
 
     // Build column list and expressions
     const columns = table.columns.map((c) => escapeTrinoIdentifier(c.name));
-    // The row number expression combines outer and inner sequence values
-    const seqExpr = `(${String(startSequence - 1)} + outer_n * 10000 + inner_n)`;
+    // Trino sequence() has a 10,000 entry limit
+    // Use 3-level CROSS JOIN to support up to 1 trillion rows:
+    // - level1: 0 to numChunks - 1 (each chunk = 100M rows)
+    // - level2: 0 to 9999 (10k values)
+    // - level3: 1 to 10000 (10k values)
+    // Row number = level1 * 100M + level2 * 10k + level3
+    const SEQUENCE_LIMIT = 10_000; // Trino's hard limit per sequence
+    const ROWS_PER_CHUNK = SEQUENCE_LIMIT * SEQUENCE_LIMIT; // 100M
+    const numChunks = Math.ceil(rowCount / ROWS_PER_CHUNK);
+
+    // The row number expression combines all three levels
+    const seqExpr = `(${String(startSequence - 1)} + level1 * ${String(ROWS_PER_CHUNK)} + level2 * ${String(SEQUENCE_LIMIT)} + level3)`;
     const expressions = table.columns.map((col) => {
       let expr = generatorToTrinoExpr(col.generator, seqExpr);
       // Apply null probability if specified
@@ -215,20 +225,13 @@ export class TrinoDataGenerator extends BaseDataGenerator {
       return expr;
     });
 
-    // Trino sequence() has a 10,000 entry limit
-    // Use CROSS JOIN of two sequences to overcome this in a single query:
-    // - outer sequence: 0 to ceil(rowCount/10000) - 1
-    // - inner sequence: 1 to 10000
-    // Combined with WHERE clause to get exact rowCount
-    const BATCH_SIZE = 10_000;
-    const outerCount = Math.ceil(rowCount / BATCH_SIZE);
-
     const insertSql = `
       INSERT INTO ${this.fullTableName(table.name)} (${columns.join(", ")})
       SELECT ${expressions.join(", ")}
-      FROM UNNEST(sequence(0, ${String(outerCount - 1)})) AS t1(outer_n)
-      CROSS JOIN UNNEST(sequence(1, ${String(BATCH_SIZE)})) AS t2(inner_n)
-      WHERE (outer_n * ${String(BATCH_SIZE)} + inner_n) <= ${String(rowCount)}
+      FROM UNNEST(sequence(0, ${String(numChunks - 1)})) AS t1(level1)
+      CROSS JOIN UNNEST(sequence(0, ${String(SEQUENCE_LIMIT - 1)})) AS t2(level2)
+      CROSS JOIN UNNEST(sequence(1, ${String(SEQUENCE_LIMIT)})) AS t3(level3)
+      WHERE (level1 * ${String(ROWS_PER_CHUNK)} + level2 * ${String(SEQUENCE_LIMIT)} + level3) <= ${String(rowCount)}
     `;
 
     const query = await trino.query(insertSql);
