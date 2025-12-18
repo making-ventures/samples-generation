@@ -21,6 +21,7 @@ export type {
   MutateTransformation,
   LookupTransformation,
   TransformationBatch,
+  TransformResult,
 } from "./types.js";
 
 export { formatBytes, formatDuration, getLookupTableName } from "./utils.js";

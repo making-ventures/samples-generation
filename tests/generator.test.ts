@@ -401,19 +401,20 @@ describe.each(generators.filter((g) => !g.skip))(
         rowCount: 10,
         createTable: false,
         optimize: false,
-        postTransformations: [
-          {
-            transformations: [
-              {
-                kind: "template",
-                column: "email",
-                template: "{first_name}.{last_name}@example.com",
-                lowercase: true,
-              },
-            ],
-          },
-        ],
       });
+
+      await generator.transform(templateTable.name, [
+        {
+          transformations: [
+            {
+              kind: "template",
+              column: "email",
+              template: "{first_name}.{last_name}@example.com",
+              lowercase: true,
+            },
+          ],
+        },
+      ]);
 
       const rows = await generator.queryRows(templateTable.name, 10);
       for (const row of rows) {
@@ -449,19 +450,20 @@ describe.each(generators.filter((g) => !g.skip))(
         rowCount: 100,
         createTable: false,
         optimize: false,
-        postTransformations: [
-          {
-            transformations: [
-              {
-                kind: "mutate",
-                column: "code",
-                probability: 0.5,
-                operations: ["replace"],
-              },
-            ],
-          },
-        ],
       });
+
+      await generator.transform(mutateTable.name, [
+        {
+          transformations: [
+            {
+              kind: "mutate",
+              column: "code",
+              probability: 0.5,
+              operations: ["replace"],
+            },
+          ],
+        },
+      ]);
 
       const rows = await generator.queryRows(mutateTable.name, 100);
       let mutatedCount = 0;
@@ -504,19 +506,20 @@ describe.each(generators.filter((g) => !g.skip))(
         rowCount: 100,
         createTable: false,
         optimize: false,
-        postTransformations: [
-          {
-            transformations: [
-              {
-                kind: "mutate",
-                column: "code",
-                probability: 1.0, // 100% mutation rate
-                operations: ["replace", "delete", "insert"],
-              },
-            ],
-          },
-        ],
       });
+
+      await generator.transform(mutateMultiTable.name, [
+        {
+          transformations: [
+            {
+              kind: "mutate",
+              column: "code",
+              probability: 1.0, // 100% mutation rate
+              operations: ["replace", "delete", "insert"],
+            },
+          ],
+        },
+      ]);
 
       const rows = await generator.queryRows(mutateMultiTable.name, 100);
       let mutatedCount = 0;
@@ -599,23 +602,24 @@ describe.each(generators.filter((g) => !g.skip))(
         rowCount: 10,
         createTable: false,
         optimize: false,
-        postTransformations: [
-          {
-            transformations: [
-              {
-                kind: "lookup",
-                column: "category_name",
-                fromTable: "test_lookup_source",
-                fromColumn: "category_name",
-                joinOn: {
-                  targetColumn: "category_id",
-                  lookupColumn: "id",
-                },
-              },
-            ],
-          },
-        ],
       });
+
+      await generator.transform(targetTable.name, [
+        {
+          transformations: [
+            {
+              kind: "lookup",
+              column: "category_name",
+              fromTable: "test_lookup_source",
+              fromColumn: "category_name",
+              joinOn: {
+                targetColumn: "category_id",
+                lookupColumn: "id",
+              },
+            },
+          ],
+        },
+      ]);
 
       const lookupRows = await generator.queryRows(lookupTable.name, 3);
       const targetRows = await generator.queryRows(targetTable.name, 10);
@@ -704,29 +708,30 @@ describe.each(generators.filter((g) => !g.skip))(
         rowCount: 5,
         createTable: false,
         optimize: false,
-        postTransformations: [
-          {
-            transformations: [
-              // Template declared first, but lookup executes first in ClickHouse
-              {
-                kind: "template",
-                column: "result",
-                template: "prefix={prefix}",
-              },
-              {
-                kind: "lookup",
-                column: "prefix",
-                fromTable: "test_order_lookup",
-                fromColumn: "prefix",
-                joinOn: {
-                  targetColumn: "lookup_id",
-                  lookupColumn: "id",
-                },
-              },
-            ],
-          },
-        ],
       });
+
+      await generator.transform(targetTable.name, [
+        {
+          transformations: [
+            // Template declared first, but lookup executes first in ClickHouse
+            {
+              kind: "template",
+              column: "result",
+              template: "prefix={prefix}",
+            },
+            {
+              kind: "lookup",
+              column: "prefix",
+              fromTable: "test_order_lookup",
+              fromColumn: "prefix",
+              joinOn: {
+                targetColumn: "lookup_id",
+                lookupColumn: "id",
+              },
+            },
+          ],
+        },
+      ]);
 
       const rows = await generator.queryRows(targetTable.name, 5);
 
@@ -781,20 +786,21 @@ describe.each(generators.filter((g) => !g.skip))(
         rowCount: 5,
         createTable: false,
         optimize: false,
-        postTransformations: [
-          {
-            description: "Generate email from name",
-            transformations: [
-              {
-                kind: "template",
-                column: "email",
-                template: "{first_name}.{last_name}@test.com",
-                lowercase: true,
-              },
-            ],
-          },
-        ],
       });
+
+      await generator.transform(descTable.name, [
+        {
+          description: "Generate email from name",
+          transformations: [
+            {
+              kind: "template",
+              column: "email",
+              template: "{first_name}.{last_name}@test.com",
+              lowercase: true,
+            },
+          ],
+        },
+      ]);
 
       const rows = await generator.queryRows(descTable.name, 5);
       for (const row of rows) {

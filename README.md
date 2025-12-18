@@ -199,21 +199,36 @@ interface GenerateOptions {
   truncateFirst?: boolean; // Default: false
   resumeSequences?: boolean; // Default: true - continue from max value
   optimize?: boolean; // Default: true - run VACUUM/OPTIMIZE after insert
-  postTransformations?: Transformation[][]; // Post-generation transformations
 }
 ```
 
-### Post-Generation Transformations
+### Transformations
 
-Apply transformations to generated data after insertion. Useful for creating derived columns (like email from first/last name) or introducing realistic data quality issues.
+Apply transformations to existing tables. Useful for creating derived columns (like email from first/last name) or introducing realistic data quality issues.
 
 ```typescript
-interface GenerateResult {
-  rowsInserted: number;
+// Generate data first
+await generator.generate({ table: usersTable, rowCount: 10000 });
+
+// Then apply transformations
+await generator.transform("users", [
+  {
+    description: "Generate email addresses",
+    transformations: [
+      {
+        kind: "template",
+        column: "email",
+        template: "{first_name}.{last_name}@example.com",
+      },
+    ],
+  },
+]);
+```
+
+```typescript
+interface TransformResult {
   durationMs: number;
-  generateMs: number;
-  optimizeMs: number;
-  transformMs: number; // Time spent on post-transformations
+  batchesApplied: number;
 }
 ```
 
@@ -267,7 +282,7 @@ Transformations are organized in batches for efficiency:
 - Batches support optional descriptions for logging and debugging
 
 ```typescript
-postTransformations: [
+await generator.transform("users", [
   {
     description: "Generate email addresses",
     transformations: [
@@ -289,7 +304,7 @@ postTransformations: [
       },
     ],
   },
-];
+]);
 ```
 
 With descriptions, you'll see helpful logs:
@@ -302,40 +317,40 @@ With descriptions, you'll see helpful logs:
 **Full example**:
 
 ```typescript
-await generator.generate({
-  table,
-  rowCount: 10000,
-  postTransformations: [
-    {
-      description: "Generate emails",
-      transformations: [
-        {
-          kind: "template",
-          column: "email",
-          template: "{first_name}.{last_name}@example.com",
-          lowercase: true,
-        },
-      ],
-    },
-    {
-      description: "Introduce 10% typos in names",
-      transformations: [
-        {
-          kind: "mutate",
-          column: "first_name",
-          probability: 0.1,
-          operations: ["replace"],
-        },
-        {
-          kind: "mutate",
-          column: "last_name",
-          probability: 0.1,
-          operations: ["replace"],
-        },
-      ],
-    },
-  ],
-});
+// Generate data
+await generator.generate({ table, rowCount: 10000 });
+
+// Apply transformations separately
+await generator.transform(table.name, [
+  {
+    description: "Generate emails",
+    transformations: [
+      {
+        kind: "template",
+        column: "email",
+        template: "{first_name}.{last_name}@example.com",
+        lowercase: true,
+      },
+    ],
+  },
+  {
+    description: "Introduce 10% typos in names",
+    transformations: [
+      {
+        kind: "mutate",
+        column: "first_name",
+        probability: 0.1,
+        operations: ["replace"],
+      },
+      {
+        kind: "mutate",
+        column: "last_name",
+        probability: 0.1,
+        operations: ["replace"],
+      },
+    ],
+  },
+]);
 ```
 
 This generates SQL like:

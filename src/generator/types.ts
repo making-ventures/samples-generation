@@ -177,11 +177,6 @@ export interface GenerateOptions {
    * (VACUUM, OPTIMIZE TABLE, etc.). Default: true.
    */
   optimize?: boolean;
-  /**
-   * Post-generation transformations to apply via UPDATE statements.
-   * Each element = one batch (one UPDATE statement).
-   */
-  postTransformations?: TransformationBatch[];
 }
 
 export type GeneratedRow = Record<string, unknown>;
@@ -194,8 +189,13 @@ export interface GenerateResult {
   generateMs: number;
   /** Duration of optimization (0 if skipped) */
   optimizeMs: number;
-  /** Duration of post-transformations (0 if none) */
-  transformMs: number;
+}
+
+export interface TransformResult {
+  /** Total duration of transformations */
+  durationMs: number;
+  /** Number of batches applied */
+  batchesApplied: number;
 }
 
 // Main interface that all database implementations must follow
@@ -231,6 +231,14 @@ export interface DataGenerator {
    * Generate and insert rows into the database
    */
   generate(options: GenerateOptions): Promise<GenerateResult>;
+
+  /**
+   * Apply transformations to an existing table
+   */
+  transform(
+    tableName: string,
+    batches: TransformationBatch[]
+  ): Promise<TransformResult>;
 
   /**
    * Query rows from a table (for verification)

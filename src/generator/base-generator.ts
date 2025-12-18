@@ -5,6 +5,8 @@ import type {
   GenerateResult,
   GeneratedRow,
   Transformation,
+  TransformationBatch,
+  TransformResult,
 } from "./types.js";
 import { formatBytes } from "./utils.js";
 
@@ -75,7 +77,6 @@ export abstract class BaseDataGenerator implements DataGenerator {
       truncateFirst = false,
       resumeSequences = true,
       optimize = true,
-      postTransformations = [],
     } = options;
     const startTime = Date.now();
 
@@ -108,23 +109,6 @@ export abstract class BaseDataGenerator implements DataGenerator {
     await this.generateNative(table, rowCount, startSequence);
     const generateMs = Date.now() - startTime;
 
-    // Apply post-transformations
-    let transformMs = 0;
-    if (postTransformations.length > 0) {
-      const transformStart = Date.now();
-      for (let i = 0; i < postTransformations.length; i++) {
-        const batch = postTransformations[i]!; // eslint-disable-line @typescript-eslint/no-non-null-assertion
-        if (batch.transformations.length > 0) {
-          const batchLabel = batch.description ?? `batch ${String(i + 1)}`;
-          console.log(
-            `[${this.name}] Applying transformations: ${batchLabel} (${String(batch.transformations.length)} transformation(s))`
-          );
-          await this.applyTransformations(table.name, batch.transformations);
-        }
-      }
-      transformMs = Date.now() - transformStart;
-    }
-
     let optimizeMs = 0;
     if (optimize) {
       const optimizeStart = Date.now();
@@ -137,7 +121,31 @@ export abstract class BaseDataGenerator implements DataGenerator {
       durationMs: Date.now() - startTime,
       generateMs,
       optimizeMs,
-      transformMs,
+    };
+  }
+
+  async transform(
+    tableName: string,
+    batches: TransformationBatch[]
+  ): Promise<TransformResult> {
+    const startTime = Date.now();
+    let batchesApplied = 0;
+
+    for (let i = 0; i < batches.length; i++) {
+      const batch = batches[i]!; // eslint-disable-line @typescript-eslint/no-non-null-assertion
+      if (batch.transformations.length > 0) {
+        const batchLabel = batch.description ?? `batch ${String(i + 1)}`;
+        console.log(
+          `[${this.name}] Applying transformations: ${batchLabel} (${String(batch.transformations.length)} transformation(s))`
+        );
+        await this.applyTransformations(tableName, batch.transformations);
+        batchesApplied++;
+      }
+    }
+
+    return {
+      durationMs: Date.now() - startTime,
+      batchesApplied,
     };
   }
 }
