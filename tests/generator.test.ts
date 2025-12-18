@@ -187,6 +187,48 @@ describe.each(generators.filter((g) => !g.skip))(
       }
     });
 
+    it("should respect choiceFromTable generator", async () => {
+      const choiceFromTableTest: TableConfig = {
+        name: "test_choice_from_table",
+        columns: [
+          {
+            name: "id",
+            type: "integer",
+            generator: { kind: "sequence", start: 1 },
+          },
+          {
+            name: "last_name",
+            type: "string",
+            generator: {
+              kind: "choiceFromTable",
+              values: ["Smith", "Johnson", "Williams", "Brown", "Jones"],
+            },
+          },
+        ],
+      };
+
+      await generator.dropTable(choiceFromTableTest.name);
+      await generator.createTable(choiceFromTableTest);
+      await generator.generate({
+        table: choiceFromTableTest,
+        rowCount: 50,
+        createTable: false,
+        optimize: false,
+      });
+
+      const rows = await generator.queryRows(choiceFromTableTest.name, 50);
+      expect(rows.length).toBe(50);
+
+      // All values should be from the allowed list
+      for (const row of rows) {
+        expect(["Smith", "Johnson", "Williams", "Brown", "Jones"]).toContain(
+          row.last_name
+        );
+      }
+
+      await generator.dropTable(choiceFromTableTest.name);
+    });
+
     it("should resume sequences when resumeSequences is true", async () => {
       await generator.truncateTable(testTable.name);
 
