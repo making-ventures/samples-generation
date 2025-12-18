@@ -96,14 +96,20 @@ export abstract class BaseDataGenerator implements DataGenerator {
     }
 
     await this.generateNative(table, rowCount, startSequence);
+    const generateMs = Date.now() - startTime;
 
+    let optimizeMs = 0;
     if (optimize) {
+      const optimizeStart = Date.now();
       await this.optimize(table.name);
+      optimizeMs = Date.now() - optimizeStart;
     }
 
     return {
       rowsInserted: rowCount,
       durationMs: Date.now() - startTime,
+      generateMs,
+      optimizeMs,
     };
   }
 }

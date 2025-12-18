@@ -104,7 +104,7 @@ async function generateForDatabase(entry: GeneratorEntry): Promise<void> {
     });
 
     console.log(
-      `Generated ${result.rowsInserted.toLocaleString()} rows in ${formatDuration(result.durationMs)}`
+      `Generated ${result.rowsInserted.toLocaleString()} rows in ${formatDuration(result.generateMs)} (optimize: ${formatDuration(result.optimizeMs)}, total: ${formatDuration(result.durationMs)})`
     );
 
     const count = await generator.countRows(TABLE_CONFIG.name);

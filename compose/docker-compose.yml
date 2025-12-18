@@ -79,7 +79,7 @@ services:
         echo "Bucket 'warehouse' ready"
 
   clickhouse:
-    image: clickhouse/clickhouse-server:25.1
+    image: clickhouse/clickhouse-server:25.11
     environment:
       CLICKHOUSE_USER: default
       CLICKHOUSE_PASSWORD: clickhouse

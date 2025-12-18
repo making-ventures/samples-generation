@@ -15,6 +15,14 @@ Generate sample data for multiple databases with a unified interface.
 pnpm install
 ```
 
+## Measurements of simple generations
+
+Environment: local databases, simple setup, 1 billion rows, 5 columns (id, 10-char string, 0 - 1000 float, string choice out of 3 variants, datetime)
+
+*ClickHouse:* Generated in 6m 8s, optimize: 4m 54s, total: 11m 2s, table size: 23.81 GB
+
+*Trino:* Generated in 5m 34s, optimize: 120ms, total: 5m 35s, table size: 17.41 GB
+
 ## Quick Start
 
 ### Using the Generator API
@@ -67,7 +75,9 @@ const result = await generator.generate({
   truncateFirst: true,
   resumeSequences: true, // Continue sequence from last max value
 });
-console.log(`Inserted ${result.rowsInserted} rows in ${result.durationMs}ms`);
+console.log(
+  `Inserted ${result.rowsInserted} rows in ${result.generateMs}ms (optimize: ${result.optimizeMs}ms)`
+);
 await generator.disconnect();
 ```
 
@@ -116,7 +126,7 @@ new TrinoDataGenerator({
 | `integer`  | INTEGER      | Int32      | INTEGER | INTEGER   |
 | `bigint`   | BIGINT       | Int64      | INTEGER | BIGINT    |
 | `float`    | NUMERIC      | Float64    | REAL    | DOUBLE    |
-| `string`   | VARCHAR(255) | String     | TEXT    | VARCHAR   |
+| `string`   | TEXT         | String     | TEXT    | VARCHAR   |
 | `boolean`  | BOOLEAN      | Bool       | INTEGER | BOOLEAN   |
 | `datetime` | TIMESTAMP    | DateTime   | TEXT    | TIMESTAMP |
 | `date`     | DATE         | Date       | TEXT    | DATE      |
@@ -296,6 +306,9 @@ TEST_POSTGRES=1 TEST_CLICKHOUSE=1 TEST_TRINO=1 pnpm test
 
 # Check for security vulnerabilities and outdated dependencies
 ./health.sh
+
+# Check for dependency updates (requires npx renovate)
+./renovate-check.sh
 
 # Run all checks
 ./all-checks.sh

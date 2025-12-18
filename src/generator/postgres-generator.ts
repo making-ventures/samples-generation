@@ -25,7 +25,7 @@ function columnTypeToPostgres(column: ColumnConfig): string {
     case "float":
       return "NUMERIC";
     case "string":
-      return "VARCHAR(255)";
+      return "TEXT";
     case "boolean":
       return "BOOLEAN";
     case "datetime":

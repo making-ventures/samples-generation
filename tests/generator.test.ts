@@ -122,6 +122,7 @@ describe.each(generators.filter((g) => !g.skip))(
         table: testTable,
         rowCount: 10,
         createTable: false,
+        optimize: false,
       });
 
       expect(result.rowsInserted).toBe(10);
@@ -157,6 +158,7 @@ describe.each(generators.filter((g) => !g.skip))(
         table: testTable,
         rowCount: 25,
         createTable: false,
+        optimize: false,
       });
 
       expect(result.rowsInserted).toBe(25);
@@ -170,6 +172,7 @@ describe.each(generators.filter((g) => !g.skip))(
         table: testTable,
         rowCount: 5,
         createTable: false,
+        optimize: false,
       });
 
       const rows = await generator.queryRows(testTable.name, 10);
@@ -192,6 +195,7 @@ describe.each(generators.filter((g) => !g.skip))(
         table: testTable,
         rowCount: 5,
         createTable: false,
+        optimize: false,
       });
 
       // Generate second batch with resumeSequences
@@ -200,6 +204,7 @@ describe.each(generators.filter((g) => !g.skip))(
         rowCount: 5,
         createTable: false,
         resumeSequences: true,
+        optimize: false,
       });
 
       const rows = await generator.queryRows(testTable.name, 20);
@@ -232,6 +237,7 @@ describe.each(generators.filter((g) => !g.skip))(
         table: nullableTable,
         rowCount: 100,
         createTable: false,
+        optimize: false,
       });
 
       const rows = await generator.queryRows(nullableTable.name, 100);
@@ -270,6 +276,7 @@ describe.each(generators.filter((g) => !g.skip))(
         table: allNullTable,
         rowCount: 10,
         createTable: false,
+        optimize: false,
       });
 
       const rows = await generator.queryRows(allNullTable.name, 10);
@@ -304,6 +311,7 @@ describe.each(generators.filter((g) => !g.skip))(
         table: noNullTable,
         rowCount: 10,
         createTable: false,
+        optimize: false,
       });
 
       const rows = await generator.queryRows(noNullTable.name, 10);

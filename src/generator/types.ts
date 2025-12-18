@@ -101,7 +101,12 @@ export type GeneratedRow = Record<string, unknown>;
 
 export interface GenerateResult {
   rowsInserted: number;
+  /** Total duration including optimization */
   durationMs: number;
+  /** Duration of data generation only */
+  generateMs: number;
+  /** Duration of optimization (0 if skipped) */
+  optimizeMs: number;
 }
 
 // Main interface that all database implementations must follow
