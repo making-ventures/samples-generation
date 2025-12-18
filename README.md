@@ -266,17 +266,6 @@ Transformations are organized in batches for efficiency:
 - Transformations within a batch are combined into a single UPDATE
 - Batches support optional descriptions for logging and debugging
 
-**Simple array format** (backward compatible):
-
-```typescript
-postTransformations: [
-  [{ kind: "template", ... }],  // batch 1
-  [{ kind: "mutate", ... }],    // batch 2
-]
-```
-
-**Object format with description**:
-
 ```typescript
 postTransformations: [
   {
@@ -317,30 +306,34 @@ await generator.generate({
   table,
   rowCount: 10000,
   postTransformations: [
-    // First UPDATE: generate emails
-    [
-      {
-        kind: "template",
-        column: "email",
-        template: "{first_name}.{last_name}@example.com",
-        lowercase: true,
-      },
-    ],
-    // Second UPDATE: introduce 10% typos in names
-    [
-      {
-        kind: "mutate",
-        column: "first_name",
-        probability: 0.1,
-        operations: ["replace"],
-      },
-      {
-        kind: "mutate",
-        column: "last_name",
-        probability: 0.1,
-        operations: ["replace"],
-      },
-    ],
+    {
+      description: "Generate emails",
+      transformations: [
+        {
+          kind: "template",
+          column: "email",
+          template: "{first_name}.{last_name}@example.com",
+          lowercase: true,
+        },
+      ],
+    },
+    {
+      description: "Introduce 10% typos in names",
+      transformations: [
+        {
+          kind: "mutate",
+          column: "first_name",
+          probability: 0.1,
+          operations: ["replace"],
+        },
+        {
+          kind: "mutate",
+          column: "last_name",
+          probability: 0.1,
+          operations: ["replace"],
+        },
+      ],
+    },
   ],
 });
 ```

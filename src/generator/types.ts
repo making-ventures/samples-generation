@@ -136,7 +136,6 @@ export type Transformation =
 
 /**
  * A batch of transformations with optional description.
- * Supports both simple array form and object form with description.
  */
 export interface TransformationBatch {
   /** Optional description for logging and debugging */
@@ -144,12 +143,6 @@ export interface TransformationBatch {
   /** Transformations to apply in this batch */
   transformations: Transformation[];
 }
-
-/**
- * Input type for transformation batches.
- * Supports both array (backward compatible) and object with description.
- */
-export type TransformationBatchInput = Transformation[] | TransformationBatch;
 
 export interface ColumnConfig {
   name: string;
@@ -187,11 +180,8 @@ export interface GenerateOptions {
   /**
    * Post-generation transformations to apply via UPDATE statements.
    * Each element = one batch (one UPDATE statement).
-   * Supports both array form and object form with description:
-   * - `[{ kind: "template", ... }]` - simple array
-   * - `{ description: "...", transformations: [...] }` - with description
    */
-  postTransformations?: TransformationBatchInput[];
+  postTransformations?: TransformationBatch[];
 }
 
 export type GeneratedRow = Record<string, unknown>;

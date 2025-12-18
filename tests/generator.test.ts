@@ -402,14 +402,16 @@ describe.each(generators.filter((g) => !g.skip))(
         createTable: false,
         optimize: false,
         postTransformations: [
-          [
-            {
-              kind: "template",
-              column: "email",
-              template: "{first_name}.{last_name}@example.com",
-              lowercase: true,
-            },
-          ],
+          {
+            transformations: [
+              {
+                kind: "template",
+                column: "email",
+                template: "{first_name}.{last_name}@example.com",
+                lowercase: true,
+              },
+            ],
+          },
         ],
       });
 
@@ -448,14 +450,16 @@ describe.each(generators.filter((g) => !g.skip))(
         createTable: false,
         optimize: false,
         postTransformations: [
-          [
-            {
-              kind: "mutate",
-              column: "code",
-              probability: 0.5,
-              operations: ["replace"],
-            },
-          ],
+          {
+            transformations: [
+              {
+                kind: "mutate",
+                column: "code",
+                probability: 0.5,
+                operations: ["replace"],
+              },
+            ],
+          },
         ],
       });
 
@@ -501,14 +505,16 @@ describe.each(generators.filter((g) => !g.skip))(
         createTable: false,
         optimize: false,
         postTransformations: [
-          [
-            {
-              kind: "mutate",
-              column: "code",
-              probability: 1.0, // 100% mutation rate
-              operations: ["replace", "delete", "insert"],
-            },
-          ],
+          {
+            transformations: [
+              {
+                kind: "mutate",
+                column: "code",
+                probability: 1.0, // 100% mutation rate
+                operations: ["replace", "delete", "insert"],
+              },
+            ],
+          },
         ],
       });
 
@@ -594,18 +600,20 @@ describe.each(generators.filter((g) => !g.skip))(
         createTable: false,
         optimize: false,
         postTransformations: [
-          [
-            {
-              kind: "lookup",
-              column: "category_name",
-              fromTable: "test_lookup_source",
-              fromColumn: "category_name",
-              joinOn: {
-                targetColumn: "category_id",
-                lookupColumn: "id",
+          {
+            transformations: [
+              {
+                kind: "lookup",
+                column: "category_name",
+                fromTable: "test_lookup_source",
+                fromColumn: "category_name",
+                joinOn: {
+                  targetColumn: "category_id",
+                  lookupColumn: "id",
+                },
               },
-            },
-          ],
+            ],
+          },
         ],
       });
 
@@ -697,24 +705,26 @@ describe.each(generators.filter((g) => !g.skip))(
         createTable: false,
         optimize: false,
         postTransformations: [
-          [
-            // Template declared first, but lookup executes first in ClickHouse
-            {
-              kind: "template",
-              column: "result",
-              template: "prefix={prefix}",
-            },
-            {
-              kind: "lookup",
-              column: "prefix",
-              fromTable: "test_order_lookup",
-              fromColumn: "prefix",
-              joinOn: {
-                targetColumn: "lookup_id",
-                lookupColumn: "id",
+          {
+            transformations: [
+              // Template declared first, but lookup executes first in ClickHouse
+              {
+                kind: "template",
+                column: "result",
+                template: "prefix={prefix}",
               },
-            },
-          ],
+              {
+                kind: "lookup",
+                column: "prefix",
+                fromTable: "test_order_lookup",
+                fromColumn: "prefix",
+                joinOn: {
+                  targetColumn: "lookup_id",
+                  lookupColumn: "id",
+                },
+              },
+            ],
+          },
         ],
       });
 

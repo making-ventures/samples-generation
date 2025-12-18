@@ -5,25 +5,8 @@ import type {
   GenerateResult,
   GeneratedRow,
   Transformation,
-  TransformationBatchInput,
 } from "./types.js";
 import { formatBytes } from "./utils.js";
-
-/**
- * Normalize a transformation batch input to get transformations and description
- */
-function normalizeBatch(batch: TransformationBatchInput): {
-  transformations: Transformation[];
-  description?: string;
-} {
-  if (Array.isArray(batch)) {
-    return { transformations: batch };
-  }
-  return {
-    transformations: batch.transformations,
-    description: batch.description,
-  };
-}
 
 export abstract class BaseDataGenerator implements DataGenerator {
   abstract readonly name: string;
@@ -130,15 +113,13 @@ export abstract class BaseDataGenerator implements DataGenerator {
     if (postTransformations.length > 0) {
       const transformStart = Date.now();
       for (let i = 0; i < postTransformations.length; i++) {
-        const { transformations, description } = normalizeBatch(
-          postTransformations[i]! // eslint-disable-line @typescript-eslint/no-non-null-assertion
-        );
-        if (transformations.length > 0) {
-          const batchLabel = description ?? `batch ${String(i + 1)}`;
+        const batch = postTransformations[i]!; // eslint-disable-line @typescript-eslint/no-non-null-assertion
+        if (batch.transformations.length > 0) {
+          const batchLabel = batch.description ?? `batch ${String(i + 1)}`;
           console.log(
-            `[${this.name}] Applying transformations: ${batchLabel} (${String(transformations.length)} transformation(s))`
+            `[${this.name}] Applying transformations: ${batchLabel} (${String(batch.transformations.length)} transformation(s))`
           );
-          await this.applyTransformations(table.name, transformations);
+          await this.applyTransformations(table.name, batch.transformations);
         }
       }
       transformMs = Date.now() - transformStart;
