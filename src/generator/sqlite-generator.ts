@@ -6,6 +6,7 @@ import type {
   GeneratorConfig,
   ChoiceByLookupGenerator,
   Transformation,
+  MutationOperation,
 } from "./types.js";
 import { BaseDataGenerator } from "./base-generator.js";
 import { getLookupTableName } from "./utils.js";
@@ -328,28 +329,36 @@ export class SQLiteDataGenerator extends BaseDataGenerator {
         case "mutate": {
           // Random string mutation using SQLite functions
           const { probability, operations } = t;
-          const op = operations[0] ?? "replace";
-          let mutateExpr: string;
           // SQLite random() returns int64, abs+modulo to get position
           const randomPos = `(abs(random()) % max(length(${escapedCol}), 1)) + 1`;
 
-          switch (op) {
-            case "replace":
-              // Replace random char with 'X'
-              mutateExpr = `substr(${escapedCol}, 1, ${randomPos} - 1) || 'X' || substr(${escapedCol}, ${randomPos} + 1)`;
-              break;
-            case "delete":
-              // Delete random char
-              mutateExpr = `substr(${escapedCol}, 1, ${randomPos} - 1) || substr(${escapedCol}, ${randomPos} + 1)`;
-              break;
-            case "insert":
-              // Insert 'X' at random position
-              mutateExpr = `substr(${escapedCol}, 1, ${randomPos}) || 'X' || substr(${escapedCol}, ${randomPos} + 1)`;
-              break;
+          // Build mutation expressions for each operation
+          const mutationExprs: Record<MutationOperation, string> = {
+            replace: `substr(${escapedCol}, 1, ${randomPos} - 1) || 'X' || substr(${escapedCol}, ${randomPos} + 1)`,
+            delete: `substr(${escapedCol}, 1, ${randomPos} - 1) || substr(${escapedCol}, ${randomPos} + 1)`,
+            insert: `substr(${escapedCol}, 1, ${randomPos}) || 'X' || substr(${escapedCol}, ${randomPos} + 1)`,
+          };
+
+          // Build expression that randomly picks from available operations
+          let mutateExpr: string;
+          if (operations.length === 1) {
+            // We know operations[0] exists since length === 1
+            mutateExpr = mutationExprs[operations[0]!]; // eslint-disable-line @typescript-eslint/no-non-null-assertion
+          } else {
+            // Use modulo to pick operation index, then CASE to select expression
+            const opIndex = `(abs(random()) % ${String(operations.length)})`;
+            const cases = operations.map((op, i) => {
+              if (i === operations.length - 1) {
+                return `ELSE ${mutationExprs[op]}`;
+              }
+              return `WHEN ${opIndex} = ${String(i)} THEN ${mutationExprs[op]}`;
+            });
+            mutateExpr = `(CASE ${cases.join(" ")} END)`;
           }
 
+          // Use <= for probability to handle edge case where probability = 1.0
           setClauses.push(
-            `${escapedCol} = CASE WHEN abs(random()) / 9223372036854775807.0 < ${String(probability)} THEN ${mutateExpr} ELSE ${escapedCol} END`
+            `${escapedCol} = CASE WHEN abs(random()) / 9223372036854775807.0 <= ${String(probability)} THEN ${mutateExpr} ELSE ${escapedCol} END`
           );
           break;
         }

@@ -6,6 +6,7 @@ import type {
   GeneratorConfig,
   ChoiceByLookupGenerator,
   Transformation,
+  MutationOperation,
 } from "./types.js";
 import { BaseDataGenerator } from "./base-generator.js";
 import { escapeTrinoIdentifier } from "./escape.js";
@@ -439,24 +440,31 @@ export class TrinoDataGenerator extends BaseDataGenerator {
         case "mutate": {
           // Random string mutation using Trino functions
           const { probability, operations } = t;
-          const op = operations[0] ?? "replace";
-          let mutateExpr: string;
           // Trino random() returns double 0-1
           const randomPos = `cast(floor(random() * length(${escapedCol})) + 1 as integer)`;
 
-          switch (op) {
-            case "replace":
-              // Replace random char with 'X'
-              mutateExpr = `concat(substr(${escapedCol}, 1, ${randomPos} - 1), 'X', substr(${escapedCol}, ${randomPos} + 1))`;
-              break;
-            case "delete":
-              // Delete random char
-              mutateExpr = `concat(substr(${escapedCol}, 1, ${randomPos} - 1), substr(${escapedCol}, ${randomPos} + 1))`;
-              break;
-            case "insert":
-              // Insert 'X' at random position
-              mutateExpr = `concat(substr(${escapedCol}, 1, ${randomPos}), 'X', substr(${escapedCol}, ${randomPos} + 1))`;
-              break;
+          // Build mutation expressions for each operation
+          const mutationExprs: Record<MutationOperation, string> = {
+            replace: `concat(substr(${escapedCol}, 1, ${randomPos} - 1), 'X', substr(${escapedCol}, ${randomPos} + 1))`,
+            delete: `concat(substr(${escapedCol}, 1, ${randomPos} - 1), substr(${escapedCol}, ${randomPos} + 1))`,
+            insert: `concat(substr(${escapedCol}, 1, ${randomPos}), 'X', substr(${escapedCol}, ${randomPos} + 1))`,
+          };
+
+          // Build expression that randomly picks from available operations
+          let mutateExpr: string;
+          if (operations.length === 1) {
+            // We know operations[0] exists since length === 1
+            mutateExpr = mutationExprs[operations[0]!]; // eslint-disable-line @typescript-eslint/no-non-null-assertion
+          } else {
+            // Use CASE with random() to pick operation
+            const cases = operations.map((op, i) => {
+              const threshold = (i + 1) / operations.length;
+              if (i === operations.length - 1) {
+                return `ELSE ${mutationExprs[op]}`;
+              }
+              return `WHEN random() < ${String(threshold)} THEN ${mutationExprs[op]}`;
+            });
+            mutateExpr = `(CASE ${cases.join(" ")} END)`;
           }
 
           setClauses.push(

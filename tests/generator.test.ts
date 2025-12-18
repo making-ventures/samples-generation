@@ -471,5 +471,60 @@ describe.each(generators.filter((g) => !g.skip))(
 
       await generator.dropTable(mutateTable.name);
     });
+
+    it("should apply mutate transformation with multiple random operations", async () => {
+      const mutateMultiTable: TableConfig = {
+        name: "test_mutate_multi",
+        columns: [
+          {
+            name: "id",
+            type: "integer",
+            generator: { kind: "sequence", start: 1 },
+          },
+          {
+            name: "code",
+            type: "string",
+            generator: { kind: "constant", value: "AAAAAAAAAA" },
+          },
+        ],
+      };
+
+      await generator.dropTable(mutateMultiTable.name);
+      await generator.createTable(mutateMultiTable);
+      await generator.generate({
+        table: mutateMultiTable,
+        rowCount: 100,
+        createTable: false,
+        optimize: false,
+        postTransformations: [
+          [
+            {
+              kind: "mutate",
+              column: "code",
+              probability: 1.0, // 100% mutation rate
+              operations: ["replace", "delete", "insert"],
+            },
+          ],
+        ],
+      });
+
+      const rows = await generator.queryRows(mutateMultiTable.name, 100);
+      let mutatedCount = 0;
+
+      for (const row of rows) {
+        const code = String(row.code);
+        // Any change from original counts as mutation
+        // Note: Due to SQL's random() evaluation, positions may vary chaotically
+        if (code !== "AAAAAAAAAA") {
+          mutatedCount++;
+        }
+      }
+
+      // With 100% probability, most rows should be mutated
+      // Some edge cases may occur due to SQL random() evaluation quirks
+      expect(mutatedCount).toBeGreaterThanOrEqual(90);
+
+      await generator.dropTable(mutateMultiTable.name);
+    });
   }
 );

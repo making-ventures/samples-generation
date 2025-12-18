@@ -86,6 +86,11 @@ export interface TemplateTransformation {
 }
 
 /**
+ * Mutation operation types
+ */
+export type MutationOperation = "replace" | "delete" | "insert";
+
+/**
  * Mutate transformation - randomly modify characters in a string
  */
 export interface MutateTransformation {
@@ -95,7 +100,7 @@ export interface MutateTransformation {
   /** Probability of mutation (0-1) */
   probability: number;
   /** Operations to apply randomly */
-  operations: ("replace" | "delete" | "insert")[];
+  operations: MutationOperation[];
 }
 
 export type Transformation = TemplateTransformation | MutateTransformation;

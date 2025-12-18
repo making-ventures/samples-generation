@@ -5,6 +5,7 @@ import type {
   ColumnConfig,
   GeneratorConfig,
   Transformation,
+  MutationOperation,
 } from "./types.js";
 import { BaseDataGenerator } from "./base-generator.js";
 import { escapeClickHouseIdentifier } from "./escape.js";
@@ -330,24 +331,34 @@ export class ClickHouseDataGenerator extends BaseDataGenerator {
         case "mutate": {
           // Random string mutation using ClickHouse functions
           const { probability, operations } = t;
-          const op = operations[0] ?? "replace";
-          let mutateExpr: string;
           // rand() returns UInt32, divide to get 0-1
           const randomPos = `toUInt32(floor(rand() / 4294967295.0 * length(${escapedCol}))) + 1`;
 
-          switch (op) {
-            case "replace":
-              // Replace random char with 'X'
-              mutateExpr = `concat(substring(${escapedCol}, 1, ${randomPos} - 1), 'X', substring(${escapedCol}, ${randomPos} + 1))`;
-              break;
-            case "delete":
-              // Delete random char
-              mutateExpr = `concat(substring(${escapedCol}, 1, ${randomPos} - 1), substring(${escapedCol}, ${randomPos} + 1))`;
-              break;
-            case "insert":
-              // Insert 'X' at random position
-              mutateExpr = `concat(substring(${escapedCol}, 1, ${randomPos}), 'X', substring(${escapedCol}, ${randomPos} + 1))`;
-              break;
+          // Build mutation expressions for each operation
+          const mutationExprs: Record<MutationOperation, string> = {
+            replace: `concat(substring(${escapedCol}, 1, ${randomPos} - 1), 'X', substring(${escapedCol}, ${randomPos} + 1))`,
+            delete: `concat(substring(${escapedCol}, 1, ${randomPos} - 1), substring(${escapedCol}, ${randomPos} + 1))`,
+            insert: `concat(substring(${escapedCol}, 1, ${randomPos}), 'X', substring(${escapedCol}, ${randomPos} + 1))`,
+          };
+
+          // Build expression that randomly picks from available operations
+          let mutateExpr: string;
+          if (operations.length === 1) {
+            // We know operations[0] exists since length === 1
+            mutateExpr = mutationExprs[operations[0]!]; // eslint-disable-line @typescript-eslint/no-non-null-assertion
+          } else {
+            // Use multiIf with rand() to pick operation
+            const conditions: string[] = [];
+            for (let i = 0; i < operations.length - 1; i++) {
+              const threshold = (i + 1) / operations.length;
+              // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+              const op = operations[i]!;
+              conditions.push(`rand() / 4294967295.0 < ${String(threshold)}, ${mutationExprs[op]}`);
+            }
+            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+            const lastOp = operations[operations.length - 1]!;
+            conditions.push(mutationExprs[lastOp]);
+            mutateExpr = `multiIf(${conditions.join(", ")})`;
           }
 
           setClauses.push(
