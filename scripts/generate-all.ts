@@ -116,11 +116,12 @@ async function generateForDatabase(entry: GeneratorEntry): Promise<void> {
       console.log(`Table size: ${size}`);
     }
 
-    await generator.disconnect();
     console.log(`Disconnected from ${name}`);
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
     console.error(`Error with ${name}: ${message}`);
+  } finally {
+    await generator.disconnect();
   }
 }
 

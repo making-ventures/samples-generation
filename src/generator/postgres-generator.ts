@@ -268,6 +268,6 @@ export class PostgresDataGenerator extends BaseDataGenerator {
   async optimize(tableName: string): Promise<void> {
     const sql = this.getSql();
     // VACUUM reclaims storage and ANALYZE updates statistics
-    await sql.unsafe(`VACUUM ANALYZE ${sql(tableName).first}`);
+    await sql.unsafe(`VACUUM ANALYZE ${escapePostgresIdentifier(tableName)}`);
   }
 }
