@@ -3,12 +3,14 @@ import {
   ClickHouseDataGenerator,
   SQLiteDataGenerator,
   TrinoDataGenerator,
+  formatDuration,
   type TableConfig,
   type DataGenerator,
 } from "../src/generator/index.js";
 
 // Run: npx tsx scripts/generate-all.ts
 // Run: GENERATE_CLICKHOUSE=1 GENERATE_TRINO=1 npx tsx scripts/generate-all.ts
+// Run: GENERATE_CLICKHOUSE=1 npx tsx scripts/generate-all.ts
 
 const TABLE_CONFIG: TableConfig = {
   name: "samples",
@@ -102,7 +104,7 @@ async function generateForDatabase(entry: GeneratorEntry): Promise<void> {
     });
 
     console.log(
-      `Generated ${result.rowsInserted.toLocaleString()} rows in ${result.durationMs.toLocaleString()}ms`
+      `Generated ${result.rowsInserted.toLocaleString()} rows in ${formatDuration(result.durationMs)}`
     );
 
     const count = await generator.countRows(TABLE_CONFIG.name);

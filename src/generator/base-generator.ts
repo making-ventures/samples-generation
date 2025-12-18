@@ -35,6 +35,11 @@ export abstract class BaseDataGenerator implements DataGenerator {
   abstract getTableSize(tableName: string): Promise<number | null>;
 
   /**
+   * Run database-specific optimization after large inserts
+   */
+  abstract optimize(tableName: string): Promise<void>;
+
+  /**
    * Generate rows using database-native SQL functions.
    * This is much faster than JavaScript-based generation.
    */
@@ -60,6 +65,7 @@ export abstract class BaseDataGenerator implements DataGenerator {
       dropFirst = false,
       truncateFirst = false,
       resumeSequences = true,
+      optimize = true,
     } = options;
     const startTime = Date.now();
 
@@ -90,6 +96,10 @@ export abstract class BaseDataGenerator implements DataGenerator {
     }
 
     await this.generateNative(table, rowCount, startSequence);
+
+    if (optimize) {
+      await this.optimize(table.name);
+    }
 
     return {
       rowsInserted: rowCount,

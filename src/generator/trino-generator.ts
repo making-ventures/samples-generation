@@ -321,4 +321,34 @@ export class TrinoDataGenerator extends BaseDataGenerator {
     }
     return null;
   }
+
+  async optimize(tableName: string): Promise<void> {
+    const trino = this.getTrino();
+    const fullTableName = `${this.fullSchemaPath}.${escapeTrinoIdentifier(tableName)}`;
+
+    // Compact small files into larger ones for better read performance
+    const rewriteQuery = await trino.query(
+      `ALTER TABLE ${fullTableName} EXECUTE rewrite_data_files(min_file_size_bytes => 10485760)`
+    );
+    // Consume the iterator to complete the query
+    for await (const _ of rewriteQuery) {
+      // no-op
+    }
+
+    // Remove old snapshots older than 1 day to reclaim storage
+    const expireQuery = await trino.query(
+      `ALTER TABLE ${fullTableName} EXECUTE expire_snapshots(retention_threshold => '1d')`
+    );
+    for await (const _ of expireQuery) {
+      // no-op
+    }
+
+    // Remove orphan files not referenced by any snapshot
+    const orphanQuery = await trino.query(
+      `ALTER TABLE ${fullTableName} EXECUTE remove_orphan_files(retention_threshold => '1d')`
+    );
+    for await (const _ of orphanQuery) {
+      // no-op
+    }
+  }
 }

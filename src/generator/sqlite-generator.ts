@@ -228,4 +228,13 @@ export class SQLiteDataGenerator extends BaseDataGenerator {
       return Promise.resolve(pageCount.page_count * pageSize.page_size);
     }
   }
+
+  optimize(_tableName: string): Promise<void> {
+    const db = this.getDb();
+    // VACUUM rebuilds the database file to reclaim space
+    db.exec(`VACUUM`);
+    // ANALYZE gathers statistics for the query planner
+    db.exec(`ANALYZE`);
+    return Promise.resolve();
+  }
 }

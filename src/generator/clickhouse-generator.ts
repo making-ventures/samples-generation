@@ -250,4 +250,15 @@ export class ClickHouseDataGenerator extends BaseDataGenerator {
     }
     return Number(firstRow.total_bytes);
   }
+
+  async optimize(tableName: string): Promise<void> {
+    const client = this.getClient();
+    // OPTIMIZE TABLE FINAL merges all parts into one for MergeTree engines
+    await client.command({
+      query: `OPTIMIZE TABLE ${escapeClickHouseIdentifier(tableName)} FINAL`,
+      clickhouse_settings: {
+        wait_end_of_query: 1,
+      },
+    });
+  }
 }

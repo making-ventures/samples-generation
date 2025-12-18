@@ -165,6 +165,7 @@ interface GenerateOptions {
   dropFirst?: boolean; // Default: false - drop table before generating
   truncateFirst?: boolean; // Default: false
   resumeSequences?: boolean; // Default: true - continue from max value
+  optimize?: boolean; // Default: true - run VACUUM/OPTIMIZE after insert
 }
 ```
 
@@ -201,6 +202,33 @@ const bytes = await generator.getTableSize("users");
 // Get human-readable size
 const size = await generator.getTableSizeForHuman("users");
 // "1.18 MB"
+```
+
+### Optimization
+
+By default, `generate()` runs database-specific optimization after inserting rows:
+
+| Database   | Optimization                                                                  |
+| ---------- | ----------------------------------------------------------------------------- |
+| PostgreSQL | `VACUUM ANALYZE` - reclaims storage and updates statistics                    |
+| ClickHouse | `OPTIMIZE TABLE FINAL` - merges all parts for MergeTree engines               |
+| SQLite     | `VACUUM` + `ANALYZE` - rebuilds file and gathers statistics                   |
+| Trino      | `rewrite_data_files` + `expire_snapshots` + `remove_orphan_files` - Iceberg   |
+
+Disable for quick tests:
+
+```typescript
+await generator.generate({
+  table,
+  rowCount: 1000,
+  optimize: false, // Skip VACUUM/OPTIMIZE
+});
+```
+
+Or call manually:
+
+```typescript
+await generator.optimize("users");
 ```
 
 You can also use the `formatBytes` utility directly:

@@ -90,6 +90,11 @@ export interface GenerateOptions {
    * and continues from there. Default: true.
    */
   resumeSequences?: boolean;
+  /**
+   * If true, runs database-specific optimization after insert
+   * (VACUUM, OPTIMIZE TABLE, etc.). Default: true.
+   */
+  optimize?: boolean;
 }
 
 export type GeneratedRow = Record<string, unknown>;
@@ -157,4 +162,13 @@ export interface DataGenerator {
    * Get the total size of a table as a human-readable string
    */
   getTableSizeForHuman(tableName: string): Promise<string | null>;
+
+  /**
+   * Run database-specific optimization after large inserts.
+   * - PostgreSQL: VACUUM ANALYZE
+   * - ClickHouse: OPTIMIZE TABLE FINAL
+   * - SQLite: VACUUM + ANALYZE
+   * - Trino/Iceberg: rewrite_data_files, expire_snapshots
+   */
+  optimize(tableName: string): Promise<void>;
 }

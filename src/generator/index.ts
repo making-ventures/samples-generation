@@ -17,7 +17,7 @@ export type {
   UuidGenerator,
 } from "./types.js";
 
-export { formatBytes } from "./utils.js";
+export { formatBytes, formatDuration } from "./utils.js";
 
 export { BaseDataGenerator } from "./base-generator.js";
 export {
