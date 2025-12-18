@@ -256,7 +256,7 @@ interface GenerateResult {
 }
 ```
 
-> **Note:** For ClickHouse, lookup transformation uses a table swap approach (CREATE → INSERT SELECT with JOIN → RENAME) since ClickHouse doesn't support correlated subqueries in `ALTER TABLE UPDATE`.
+> **Note:** For ClickHouse, lookup transformation uses a table swap approach (CREATE → INSERT SELECT with JOIN → RENAME) since ClickHouse doesn't support correlated subqueries in `ALTER TABLE UPDATE`. This means lookups execute **before** other transformations in the same batch. If order matters, place lookups in a separate batch.
 
 #### Batching Transformations
 
