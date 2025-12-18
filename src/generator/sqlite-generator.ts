@@ -29,6 +29,16 @@ function columnTypeToSqlite(column: ColumnConfig): string {
 }
 
 /**
+ * Wrap an expression to return NULL with given probability (SQLite)
+ */
+function wrapWithNullCheck(expr: string, nullProbability: number): string {
+  if (nullProbability <= 0) return expr;
+  if (nullProbability >= 1) return "NULL";
+  // abs(random()) / 9223372036854775807.0 gives 0 to 1
+  return `CASE WHEN abs(random()) / 9223372036854775807.0 < ${String(nullProbability)} THEN NULL ELSE ${expr} END`;
+}
+
+/**
  * Convert a generator config to a SQLite SQL expression
  * SQLite uses 'n' as the row number from the recursive CTE (1-based)
  */
@@ -147,9 +157,14 @@ export class SQLiteDataGenerator extends BaseDataGenerator {
     // Build column list and expressions
     const columns = table.columns.map((c) => c.name);
     const seqExpr = "n";
-    const expressions = table.columns.map((col) =>
-      generatorToSqliteExpr(col.generator, seqExpr)
-    );
+    const expressions = table.columns.map((col) => {
+      let expr = generatorToSqliteExpr(col.generator, seqExpr);
+      // Apply null probability if specified
+      if (col.nullable && col.nullProbability && col.nullProbability > 0) {
+        expr = wrapWithNullCheck(expr, col.nullProbability);
+      }
+      return expr;
+    });
 
     // Use recursive CTE to generate sequence
     // n starts from startSequence

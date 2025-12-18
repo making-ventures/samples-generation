@@ -125,9 +125,22 @@ new TrinoDataGenerator({
 
 Each column can have additional options:
 
-| Option     | Type      | Default | Description                                      |
-| ---------- | --------- | ------- | ------------------------------------------------ |
-| `nullable` | `boolean` | `false` | If `true`, omits `NOT NULL` constraint on column |
+| Option            | Type      | Default | Description                                      |
+| ----------------- | --------- | ------- | ------------------------------------------------ |
+| `nullable`        | `boolean` | `false` | If `true`, omits `NOT NULL` constraint on column |
+| `nullProbability` | `number`  | `0`     | Probability of NULL values (0-1)                 |
+
+Example with nullable column:
+
+```typescript
+{
+  name: "middle_name",
+  type: "string",
+  generator: { kind: "randomString", length: 10 },
+  nullable: true,
+  nullProbability: 0.3  // 30% of rows will have NULL
+}
+```
 
 ### Value Generators
 

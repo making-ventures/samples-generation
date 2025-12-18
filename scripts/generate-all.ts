@@ -33,7 +33,8 @@ const TABLE_CONFIG: TableConfig = {
   ],
 };
 
-const ROW_COUNT = 100_000_000;
+// const ROW_COUNT = 100_000_000;
+const ROW_COUNT = 1_000_000_000;
 
 interface GeneratorEntry {
   name: string;

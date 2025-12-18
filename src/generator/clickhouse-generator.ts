@@ -39,6 +39,16 @@ function columnTypeToClickHouse(column: ColumnConfig): string {
 }
 
 /**
+ * Wrap an expression to return NULL with given probability (ClickHouse)
+ */
+function wrapWithNullCheck(expr: string, nullProbability: number): string {
+  if (nullProbability <= 0) return expr;
+  if (nullProbability >= 1) return "NULL";
+  // rand() returns UInt32 (0 to 4294967295), divide to get 0-1 range
+  return `if(rand() / 4294967295.0 < ${String(nullProbability)}, NULL, ${expr})`;
+}
+
+/**
  * Convert a generator config to a ClickHouse SQL expression
  */
 export function generatorToClickHouseExpr(
@@ -165,9 +175,14 @@ export class ClickHouseDataGenerator extends BaseDataGenerator {
       escapeClickHouseIdentifier(c.name)
     );
     const seqExpr = `(number + ${String(startSequence)})`;
-    const expressions = table.columns.map((col) =>
-      generatorToClickHouseExpr(col.generator, seqExpr)
-    );
+    const expressions = table.columns.map((col) => {
+      let expr = generatorToClickHouseExpr(col.generator, seqExpr);
+      // Apply null probability if specified
+      if (col.nullable && col.nullProbability && col.nullProbability > 0) {
+        expr = wrapWithNullCheck(expr, col.nullProbability);
+      }
+      return expr;
+    });
 
     const insertSql = `
       INSERT INTO ${escapedTableName} (${columns.join(", ")})

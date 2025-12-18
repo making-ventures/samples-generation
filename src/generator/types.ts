@@ -67,6 +67,11 @@ export interface ColumnConfig {
   type: ColumnType;
   generator: GeneratorConfig;
   nullable?: boolean;
+  /**
+   * Probability of NULL values for this column (0-1).
+   * Requires nullable: true to take effect.
+   */
+  nullProbability?: number;
 }
 
 export interface TableConfig {

@@ -36,6 +36,15 @@ function columnTypeToPostgres(column: ColumnConfig): string {
 }
 
 /**
+ * Wrap an expression to return NULL with given probability (Postgres)
+ */
+function wrapWithNullCheck(expr: string, nullProbability: number): string {
+  if (nullProbability <= 0) return expr;
+  if (nullProbability >= 1) return "NULL";
+  return `CASE WHEN random() < ${String(nullProbability)} THEN NULL ELSE ${expr} END`;
+}
+
+/**
  * Convert a generator config to a Postgres SQL expression
  */
 export function generatorToPostgresExpr(
@@ -152,11 +161,15 @@ export class PostgresDataGenerator extends BaseDataGenerator {
     const columns = table.columns.map((c) => escapePostgresIdentifier(c.name));
     const seqExpr = `(n + ${String(startSequence - 1)})`;
     const expressions = table.columns.map((col) => {
-      const expr = generatorToPostgresExpr(col.generator, seqExpr);
+      let expr = generatorToPostgresExpr(col.generator, seqExpr);
       // Cast to proper type if needed
-      if (col.type === "integer") return `(${expr})::integer`;
-      if (col.type === "bigint") return `(${expr})::bigint`;
-      if (col.type === "boolean") return `(${expr})::boolean`;
+      if (col.type === "integer") expr = `(${expr})::integer`;
+      else if (col.type === "bigint") expr = `(${expr})::bigint`;
+      else if (col.type === "boolean") expr = `(${expr})::boolean`;
+      // Apply null probability if specified
+      if (col.nullable && col.nullProbability && col.nullProbability > 0) {
+        expr = wrapWithNullCheck(expr, col.nullProbability);
+      }
       return expr;
     });
 

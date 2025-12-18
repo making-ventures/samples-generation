@@ -36,6 +36,15 @@ function columnTypeToTrino(column: ColumnConfig): string {
 }
 
 /**
+ * Wrap an expression to return NULL with given probability (Trino)
+ */
+function wrapWithNullCheck(expr: string, nullProbability: number): string {
+  if (nullProbability <= 0) return expr;
+  if (nullProbability >= 1) return "NULL";
+  return `CASE WHEN random() < ${String(nullProbability)} THEN NULL ELSE ${expr} END`;
+}
+
+/**
  * Convert a generator config to a Trino SQL expression
  * Trino uses 'n' as the row number from UNNEST(sequence(...))
  */
@@ -197,9 +206,14 @@ export class TrinoDataGenerator extends BaseDataGenerator {
     const columns = table.columns.map((c) => escapeTrinoIdentifier(c.name));
     // The row number expression combines outer and inner sequence values
     const seqExpr = `(${String(startSequence - 1)} + outer_n * 10000 + inner_n)`;
-    const expressions = table.columns.map((col) =>
-      generatorToTrinoExpr(col.generator, seqExpr)
-    );
+    const expressions = table.columns.map((col) => {
+      let expr = generatorToTrinoExpr(col.generator, seqExpr);
+      // Apply null probability if specified
+      if (col.nullable && col.nullProbability && col.nullProbability > 0) {
+        expr = wrapWithNullCheck(expr, col.nullProbability);
+      }
+      return expr;
+    });
 
     // Trino sequence() has a 10,000 entry limit
     // Use CROSS JOIN of two sequences to overcome this in a single query:

@@ -206,5 +206,111 @@ describe.each(generators.filter((g) => !g.skip))(
       const ids = rows.map((r) => Number(r.id)).sort((a, b) => a - b);
       expect(ids).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
     });
+
+    it("should generate NULL values based on nullProbability", async () => {
+      const nullableTable: TableConfig = {
+        name: "test_nullable",
+        columns: [
+          {
+            name: "id",
+            type: "integer",
+            generator: { kind: "sequence", start: 1 },
+          },
+          {
+            name: "maybe_null",
+            type: "string",
+            generator: { kind: "randomString", length: 5 },
+            nullable: true,
+            nullProbability: 0.5, // 50% should be null
+          },
+        ],
+      };
+
+      await generator.dropTable(nullableTable.name);
+      await generator.createTable(nullableTable);
+      await generator.generate({
+        table: nullableTable,
+        rowCount: 100,
+        createTable: false,
+      });
+
+      const rows = await generator.queryRows(nullableTable.name, 100);
+      const nullCount = rows.filter((r) => r.maybe_null === null).length;
+
+      // With 50% null percentage and 100 rows, we expect roughly 50 nulls
+      // Allow some variance (30-70 range for statistical tolerance)
+      expect(nullCount).toBeGreaterThanOrEqual(20);
+      expect(nullCount).toBeLessThanOrEqual(80);
+
+      await generator.dropTable(nullableTable.name);
+    });
+
+    it("should generate all NULLs when nullProbability is 1", async () => {
+      const allNullTable: TableConfig = {
+        name: "test_all_null",
+        columns: [
+          {
+            name: "id",
+            type: "integer",
+            generator: { kind: "sequence", start: 1 },
+          },
+          {
+            name: "always_null",
+            type: "string",
+            generator: { kind: "randomString", length: 5 },
+            nullable: true,
+            nullProbability: 1,
+          },
+        ],
+      };
+
+      await generator.dropTable(allNullTable.name);
+      await generator.createTable(allNullTable);
+      await generator.generate({
+        table: allNullTable,
+        rowCount: 10,
+        createTable: false,
+      });
+
+      const rows = await generator.queryRows(allNullTable.name, 10);
+      const nullCount = rows.filter((r) => r.always_null === null).length;
+      expect(nullCount).toBe(10);
+
+      await generator.dropTable(allNullTable.name);
+    });
+
+    it("should generate no NULLs when nullProbability is 0", async () => {
+      const noNullTable: TableConfig = {
+        name: "test_no_null",
+        columns: [
+          {
+            name: "id",
+            type: "integer",
+            generator: { kind: "sequence", start: 1 },
+          },
+          {
+            name: "never_null",
+            type: "string",
+            generator: { kind: "randomString", length: 5 },
+            nullable: true,
+            nullProbability: 0,
+          },
+        ],
+      };
+
+      await generator.dropTable(noNullTable.name);
+      await generator.createTable(noNullTable);
+      await generator.generate({
+        table: noNullTable,
+        rowCount: 10,
+        createTable: false,
+      });
+
+      const rows = await generator.queryRows(noNullTable.name, 10);
+      const nullCount = rows.filter((r) => r.never_null === null).length;
+      expect(nullCount).toBe(0);
+
+      await generator.dropTable(noNullTable.name);
+    });
   }
 );
