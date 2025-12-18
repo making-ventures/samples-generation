@@ -353,6 +353,15 @@ const size = await generator.getTableSizeForHuman("users");
 // "1.18 MB"
 ```
 
+You can also use the `formatBytes` utility directly:
+
+```typescript
+import { formatBytes } from "./src/generator/index.js";
+
+formatBytes(1024); // "1.00 KB"
+formatBytes(1048576); // "1.00 MB"
+```
+
 ### Optimization
 
 By default, `generate()` runs database-specific optimization after inserting rows:
@@ -378,15 +387,6 @@ Or call manually:
 
 ```typescript
 await generator.optimize("users");
-```
-
-You can also use the `formatBytes` utility directly:
-
-```typescript
-import { formatBytes } from "./src/generator/index.js";
-
-formatBytes(1024); // "1.00 KB"
-formatBytes(1048576); // "1.00 MB"
 ```
 
 ## Scripts
@@ -435,6 +435,9 @@ TEST_TRINO=1 pnpm test
 
 # Run all database tests
 TEST_POSTGRES=1 TEST_CLICKHOUSE=1 TEST_TRINO=1 pnpm test
+
+# Or use the shortcut script
+./test-all-dbs.sh
 ```
 
 ## Quality Checks
