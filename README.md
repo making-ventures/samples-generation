@@ -23,8 +23,6 @@ _ClickHouse:_ Generated in 11m 2s (generation: 6m 8s, optimisation: 4m 54s), tab
 
 _Trino:_ Generated in 5m 35s (generation: 5m 34s, optimisation: 120ms), table size: 17.41 GB
 
-Same setup but 10 billion rows:
-
 ## Quick Start
 
 ### Using the Generator API
@@ -312,57 +310,6 @@ With descriptions, you'll see helpful logs:
 ```
 [postgres] Applying transformations: Generate email addresses (1 transformation(s))
 [postgres] Applying transformations: Introduce data quality issues (1 transformation(s))
-```
-
-**Full example**:
-
-```typescript
-// Generate data
-await generator.generate({ table, rowCount: 10000 });
-
-// Apply transformations separately
-await generator.transform(table.name, [
-  {
-    description: "Generate emails",
-    transformations: [
-      {
-        kind: "template",
-        column: "email",
-        template: "{first_name}.{last_name}@example.com",
-        lowercase: true,
-      },
-    ],
-  },
-  {
-    description: "Introduce 10% typos in names",
-    transformations: [
-      {
-        kind: "mutate",
-        column: "first_name",
-        probability: 0.1,
-        operations: ["replace"],
-      },
-      {
-        kind: "mutate",
-        column: "last_name",
-        probability: 0.1,
-        operations: ["replace"],
-      },
-    ],
-  },
-]);
-```
-
-This generates SQL like:
-
-```sql
--- First batch
-UPDATE users SET email = lower(first_name || '.' || last_name || '@example.com');
-
--- Second batch (combined)
-UPDATE users SET
-  first_name = CASE WHEN random() < 0.1 THEN overlay(...) ELSE first_name END,
-  last_name = CASE WHEN random() < 0.1 THEN overlay(...) ELSE last_name END;
 ```
 
 ### Escape Utilities
