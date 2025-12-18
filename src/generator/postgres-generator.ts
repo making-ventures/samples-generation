@@ -5,6 +5,7 @@ import type {
   ColumnConfig,
   GeneratorConfig,
   ChoiceByLookupGenerator,
+  Transformation,
 } from "./types.js";
 import { BaseDataGenerator } from "./base-generator.js";
 import { escapePostgresIdentifier } from "./escape.js";
@@ -269,5 +270,78 @@ export class PostgresDataGenerator extends BaseDataGenerator {
     const sql = this.getSql();
     // VACUUM reclaims storage and ANALYZE updates statistics
     await sql.unsafe(`VACUUM ANALYZE ${escapePostgresIdentifier(tableName)}`);
+  }
+
+  protected async applyTransformations(
+    tableName: string,
+    transformations: Transformation[]
+  ): Promise<void> {
+    if (transformations.length === 0) return;
+
+    const sql = this.getSql();
+    const escapedTable = escapePostgresIdentifier(tableName);
+    const setClauses: string[] = [];
+
+    for (const t of transformations) {
+      const escapedCol = escapePostgresIdentifier(t.column);
+
+      switch (t.kind) {
+        case "template": {
+          // Replace {column_name} with column references
+          let expr = `'${t.template.replace(/'/g, "''")}'`;
+          const refs = t.template.match(/\{([^}]+)\}/g) ?? [];
+          for (const ref of refs) {
+            const colName = ref.slice(1, -1);
+            const colRef = escapePostgresIdentifier(colName);
+            // Replace {col} with concatenation: ... || col || ...
+            expr = expr.replace(
+              `'{${colName}}'`,
+              `' || ${colRef} || '`
+            );
+            expr = expr.replace(
+              `{${colName}}`,
+              `' || ${colRef} || '`
+            );
+          }
+          // Clean up empty string concatenations
+          expr = expr.replace(/^'' \|\| /, "").replace(/ \|\| ''$/, "");
+          expr = expr.replace(/' \|\| '' \|\| '/g, "' || '");
+          if (t.lowercase) {
+            expr = `lower(${expr})`;
+          }
+          setClauses.push(`${escapedCol} = ${expr}`);
+          break;
+        }
+        case "mutate": {
+          // Random string mutation
+          const { probability, operations } = t;
+          const op = operations[0] ?? "replace"; // Use first operation for now
+          let mutateExpr: string;
+
+          switch (op) {
+            case "replace":
+              // Replace random char with 'X'
+              mutateExpr = `overlay(${escapedCol} placing 'X' from (floor(random() * length(${escapedCol})) + 1)::int for 1)`;
+              break;
+            case "delete":
+              // Delete random char
+              mutateExpr = `left(${escapedCol}, (floor(random() * length(${escapedCol})))::int) || right(${escapedCol}, length(${escapedCol}) - (floor(random() * length(${escapedCol})) + 1)::int)`;
+              break;
+            case "insert":
+              // Insert 'X' at random position
+              mutateExpr = `left(${escapedCol}, (floor(random() * length(${escapedCol})))::int) || 'X' || right(${escapedCol}, length(${escapedCol}) - (floor(random() * length(${escapedCol})))::int)`;
+              break;
+          }
+
+          setClauses.push(
+            `${escapedCol} = CASE WHEN random() < ${String(probability)} THEN ${mutateExpr} ELSE ${escapedCol} END`
+          );
+          break;
+        }
+      }
+    }
+
+    const updateSql = `UPDATE ${escapedTable} SET ${setClauses.join(", ")}`;
+    await sql.unsafe(updateSql);
   }
 }

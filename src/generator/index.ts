@@ -16,6 +16,9 @@ export type {
   DatetimeGenerator,
   UuidGenerator,
   ChoiceByLookupGenerator,
+  Transformation,
+  TemplateTransformation,
+  MutateTransformation,
 } from "./types.js";
 
 export { formatBytes, formatDuration, getLookupTableName } from "./utils.js";

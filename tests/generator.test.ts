@@ -362,5 +362,114 @@ describe.each(generators.filter((g) => !g.skip))(
 
       await generator.dropTable(noNullTable.name);
     });
+
+    it("should apply template transformation", async () => {
+      const templateTable: TableConfig = {
+        name: "test_template",
+        columns: [
+          {
+            name: "id",
+            type: "integer",
+            generator: { kind: "sequence", start: 1 },
+          },
+          {
+            name: "first_name",
+            type: "string",
+            generator: { kind: "choice", values: ["John", "Jane", "Bob"] },
+          },
+          {
+            name: "last_name",
+            type: "string",
+            generator: { kind: "choice", values: ["Smith", "Doe", "Johnson"] },
+          },
+          {
+            name: "email",
+            type: "string",
+            generator: { kind: "constant", value: "" },
+          },
+        ],
+      };
+
+      await generator.dropTable(templateTable.name);
+      await generator.createTable(templateTable);
+      await generator.generate({
+        table: templateTable,
+        rowCount: 10,
+        createTable: false,
+        optimize: false,
+        postTransformations: [
+          [
+            {
+              kind: "template",
+              column: "email",
+              template: "{first_name}.{last_name}@example.com",
+              lowercase: true,
+            },
+          ],
+        ],
+      });
+
+      const rows = await generator.queryRows(templateTable.name, 10);
+      for (const row of rows) {
+        const firstName = String(row.first_name).toLowerCase();
+        const lastName = String(row.last_name).toLowerCase();
+        expect(row.email).toBe(`${firstName}.${lastName}@example.com`);
+      }
+
+      await generator.dropTable(templateTable.name);
+    });
+
+    it("should apply mutate transformation with probability", async () => {
+      const mutateTable: TableConfig = {
+        name: "test_mutate",
+        columns: [
+          {
+            name: "id",
+            type: "integer",
+            generator: { kind: "sequence", start: 1 },
+          },
+          {
+            name: "code",
+            type: "string",
+            generator: { kind: "constant", value: "AAAAAAAAAA" },
+          },
+        ],
+      };
+
+      await generator.dropTable(mutateTable.name);
+      await generator.createTable(mutateTable);
+      await generator.generate({
+        table: mutateTable,
+        rowCount: 100,
+        createTable: false,
+        optimize: false,
+        postTransformations: [
+          [
+            {
+              kind: "mutate",
+              column: "code",
+              probability: 0.5,
+              operations: ["replace"],
+            },
+          ],
+        ],
+      });
+
+      const rows = await generator.queryRows(mutateTable.name, 100);
+      let mutatedCount = 0;
+      for (const row of rows) {
+        if (row.code !== "AAAAAAAAAA") {
+          mutatedCount++;
+          // Mutated values should contain an X
+          expect(row.code).toContain("X");
+        }
+      }
+
+      // With 50% probability, expect roughly half to be mutated
+      expect(mutatedCount).toBeGreaterThanOrEqual(20);
+      expect(mutatedCount).toBeLessThanOrEqual(80);
+
+      await generator.dropTable(mutateTable.name);
+    });
   }
 );

@@ -4,6 +4,7 @@ import type {
   GenerateOptions,
   GenerateResult,
   GeneratedRow,
+  Transformation,
 } from "./types.js";
 import { formatBytes } from "./utils.js";
 
@@ -40,6 +41,14 @@ export abstract class BaseDataGenerator implements DataGenerator {
   abstract optimize(tableName: string): Promise<void>;
 
   /**
+   * Apply a batch of transformations via UPDATE statement
+   */
+  protected abstract applyTransformations(
+    tableName: string,
+    transformations: Transformation[]
+  ): Promise<void>;
+
+  /**
    * Generate rows using database-native SQL functions.
    * This is much faster than JavaScript-based generation.
    */
@@ -66,6 +75,7 @@ export abstract class BaseDataGenerator implements DataGenerator {
       truncateFirst = false,
       resumeSequences = true,
       optimize = true,
+      postTransformations = [],
     } = options;
     const startTime = Date.now();
 
@@ -98,6 +108,18 @@ export abstract class BaseDataGenerator implements DataGenerator {
     await this.generateNative(table, rowCount, startSequence);
     const generateMs = Date.now() - startTime;
 
+    // Apply post-transformations
+    let transformMs = 0;
+    if (postTransformations.length > 0) {
+      const transformStart = Date.now();
+      for (const batch of postTransformations) {
+        if (batch.length > 0) {
+          await this.applyTransformations(table.name, batch);
+        }
+      }
+      transformMs = Date.now() - transformStart;
+    }
+
     let optimizeMs = 0;
     if (optimize) {
       const optimizeStart = Date.now();
@@ -110,6 +132,7 @@ export abstract class BaseDataGenerator implements DataGenerator {
       durationMs: Date.now() - startTime,
       generateMs,
       optimizeMs,
+      transformMs,
     };
   }
 }

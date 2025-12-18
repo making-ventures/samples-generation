@@ -69,6 +69,37 @@ export type GeneratorConfig =
   | UuidGenerator
   | ChoiceByLookupGenerator;
 
+// Post-generation transformation types
+
+/**
+ * Template transformation - construct a string from other columns
+ * Use {column_name} to reference other columns
+ */
+export interface TemplateTransformation {
+  kind: "template";
+  /** Column to update */
+  column: string;
+  /** Template string, e.g., "{first_name}.{last_name}@example.com" */
+  template: string;
+  /** If true, convert to lowercase (default: false) */
+  lowercase?: boolean;
+}
+
+/**
+ * Mutate transformation - randomly modify characters in a string
+ */
+export interface MutateTransformation {
+  kind: "mutate";
+  /** Column to mutate */
+  column: string;
+  /** Probability of mutation (0-1) */
+  probability: number;
+  /** Operations to apply randomly */
+  operations: ("replace" | "delete" | "insert")[];
+}
+
+export type Transformation = TemplateTransformation | MutateTransformation;
+
 export interface ColumnConfig {
   name: string;
   type: ColumnType;
@@ -102,6 +133,12 @@ export interface GenerateOptions {
    * (VACUUM, OPTIMIZE TABLE, etc.). Default: true.
    */
   optimize?: boolean;
+  /**
+   * Post-generation transformations to apply via UPDATE statements.
+   * Outer array = ordered batches (each batch = one UPDATE).
+   * Inner array = transformations to combine in same UPDATE.
+   */
+  postTransformations?: Transformation[][];
 }
 
 export type GeneratedRow = Record<string, unknown>;
@@ -114,6 +151,8 @@ export interface GenerateResult {
   generateMs: number;
   /** Duration of optimization (0 if skipped) */
   optimizeMs: number;
+  /** Duration of post-transformations (0 if none) */
+  transformMs: number;
 }
 
 // Main interface that all database implementations must follow

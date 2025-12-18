@@ -4,6 +4,7 @@ import type {
   GeneratedRow,
   ColumnConfig,
   GeneratorConfig,
+  Transformation,
 } from "./types.js";
 import { BaseDataGenerator } from "./base-generator.js";
 import { escapeClickHouseIdentifier } from "./escape.js";
@@ -280,6 +281,87 @@ export class ClickHouseDataGenerator extends BaseDataGenerator {
     // OPTIMIZE TABLE FINAL merges all parts into one for MergeTree engines
     await client.command({
       query: `OPTIMIZE TABLE ${escapeClickHouseIdentifier(tableName)} FINAL`,
+      clickhouse_settings: {
+        wait_end_of_query: 1,
+      },
+    });
+  }
+
+  protected async applyTransformations(
+    tableName: string,
+    transformations: Transformation[]
+  ): Promise<void> {
+    if (transformations.length === 0) return;
+
+    const client = this.getClient();
+    const escapedTable = escapeClickHouseIdentifier(tableName);
+    const setClauses: string[] = [];
+
+    for (const t of transformations) {
+      const escapedCol = escapeClickHouseIdentifier(t.column);
+
+      switch (t.kind) {
+        case "template": {
+          // Replace {column_name} with column references
+          let expr = `'${t.template.replace(/'/g, "\\'")}'`;
+          const refs = t.template.match(/\{([^}]+)\}/g) ?? [];
+          for (const ref of refs) {
+            const colName = ref.slice(1, -1);
+            const colRef = escapeClickHouseIdentifier(colName);
+            // Replace {col} with concatenation
+            expr = expr.replace(
+              `'{${colName}}'`,
+              `' || toString(${colRef}) || '`
+            );
+            expr = expr.replace(
+              `{${colName}}`,
+              `' || toString(${colRef}) || '`
+            );
+          }
+          // Clean up empty string concatenations
+          expr = expr.replace(/^'' \|\| /, "").replace(/ \|\| ''$/, "");
+          expr = expr.replace(/' \|\| '' \|\| '/g, "' || '");
+          if (t.lowercase) {
+            expr = `lower(${expr})`;
+          }
+          setClauses.push(`${escapedCol} = ${expr}`);
+          break;
+        }
+        case "mutate": {
+          // Random string mutation using ClickHouse functions
+          const { probability, operations } = t;
+          const op = operations[0] ?? "replace";
+          let mutateExpr: string;
+          // rand() returns UInt32, divide to get 0-1
+          const randomPos = `toUInt32(floor(rand() / 4294967295.0 * length(${escapedCol}))) + 1`;
+
+          switch (op) {
+            case "replace":
+              // Replace random char with 'X'
+              mutateExpr = `concat(substring(${escapedCol}, 1, ${randomPos} - 1), 'X', substring(${escapedCol}, ${randomPos} + 1))`;
+              break;
+            case "delete":
+              // Delete random char
+              mutateExpr = `concat(substring(${escapedCol}, 1, ${randomPos} - 1), substring(${escapedCol}, ${randomPos} + 1))`;
+              break;
+            case "insert":
+              // Insert 'X' at random position
+              mutateExpr = `concat(substring(${escapedCol}, 1, ${randomPos}), 'X', substring(${escapedCol}, ${randomPos} + 1))`;
+              break;
+          }
+
+          setClauses.push(
+            `${escapedCol} = if(rand() / 4294967295.0 < ${String(probability)}, ${mutateExpr}, ${escapedCol})`
+          );
+          break;
+        }
+      }
+    }
+
+    // ClickHouse uses ALTER TABLE UPDATE syntax
+    const updateSql = `ALTER TABLE ${escapedTable} UPDATE ${setClauses.join(", ")} WHERE 1`;
+    await client.command({
+      query: updateSql,
       clickhouse_settings: {
         wait_end_of_query: 1,
       },

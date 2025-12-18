@@ -5,6 +5,7 @@ import type {
   ColumnConfig,
   GeneratorConfig,
   ChoiceByLookupGenerator,
+  Transformation,
 } from "./types.js";
 import { BaseDataGenerator } from "./base-generator.js";
 import { getLookupTableName } from "./utils.js";
@@ -279,6 +280,84 @@ export class SQLiteDataGenerator extends BaseDataGenerator {
     db.exec(`VACUUM`);
     // ANALYZE gathers statistics for the query planner
     db.exec(`ANALYZE`);
+    return Promise.resolve();
+  }
+
+  protected applyTransformations(
+    tableName: string,
+    transformations: Transformation[]
+  ): Promise<void> {
+    if (transformations.length === 0) return Promise.resolve();
+
+    const db = this.getDb();
+    // SQLite identifier escaping with double quotes
+    const escapeId = (name: string): string => `"${name.replace(/"/g, '""')}"`;
+    const escapedTable = escapeId(tableName);
+    const setClauses: string[] = [];
+
+    for (const t of transformations) {
+      const escapedCol = escapeId(t.column);
+
+      switch (t.kind) {
+        case "template": {
+          // Replace {column_name} with column references
+          let expr = `'${t.template.replace(/'/g, "''")}'`;
+          const refs = t.template.match(/\{([^}]+)\}/g) ?? [];
+          for (const ref of refs) {
+            const colName = ref.slice(1, -1);
+            const colRef = escapeId(colName);
+            // Replace {col} with concatenation
+            expr = expr.replace(
+              `'{${colName}}'`,
+              `' || ${colRef} || '`
+            );
+            expr = expr.replace(
+              `{${colName}}`,
+              `' || ${colRef} || '`
+            );
+          }
+          // Clean up empty string concatenations
+          expr = expr.replace(/^'' \|\| /, "").replace(/ \|\| ''$/, "");
+          expr = expr.replace(/' \|\| '' \|\| '/g, "' || '");
+          if (t.lowercase) {
+            expr = `lower(${expr})`;
+          }
+          setClauses.push(`${escapedCol} = ${expr}`);
+          break;
+        }
+        case "mutate": {
+          // Random string mutation using SQLite functions
+          const { probability, operations } = t;
+          const op = operations[0] ?? "replace";
+          let mutateExpr: string;
+          // SQLite random() returns int64, abs+modulo to get position
+          const randomPos = `(abs(random()) % max(length(${escapedCol}), 1)) + 1`;
+
+          switch (op) {
+            case "replace":
+              // Replace random char with 'X'
+              mutateExpr = `substr(${escapedCol}, 1, ${randomPos} - 1) || 'X' || substr(${escapedCol}, ${randomPos} + 1)`;
+              break;
+            case "delete":
+              // Delete random char
+              mutateExpr = `substr(${escapedCol}, 1, ${randomPos} - 1) || substr(${escapedCol}, ${randomPos} + 1)`;
+              break;
+            case "insert":
+              // Insert 'X' at random position
+              mutateExpr = `substr(${escapedCol}, 1, ${randomPos}) || 'X' || substr(${escapedCol}, ${randomPos} + 1)`;
+              break;
+          }
+
+          setClauses.push(
+            `${escapedCol} = CASE WHEN abs(random()) / 9223372036854775807.0 < ${String(probability)} THEN ${mutateExpr} ELSE ${escapedCol} END`
+          );
+          break;
+        }
+      }
+    }
+
+    const updateSql = `UPDATE ${escapedTable} SET ${setClauses.join(", ")}`;
+    db.exec(updateSql);
     return Promise.resolve();
   }
 }

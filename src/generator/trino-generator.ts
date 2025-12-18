@@ -5,6 +5,7 @@ import type {
   ColumnConfig,
   GeneratorConfig,
   ChoiceByLookupGenerator,
+  Transformation,
 } from "./types.js";
 import { BaseDataGenerator } from "./base-generator.js";
 import { escapeTrinoIdentifier } from "./escape.js";
@@ -390,6 +391,86 @@ export class TrinoDataGenerator extends BaseDataGenerator {
     );
     for await (const _ of orphanQuery) {
       // no-op
+    }
+  }
+
+  protected async applyTransformations(
+    tableName: string,
+    transformations: Transformation[]
+  ): Promise<void> {
+    if (transformations.length === 0) return;
+
+    const trino = this.getTrino();
+    const fullTableName = `${this.fullSchemaPath}.${escapeTrinoIdentifier(tableName)}`;
+    const setClauses: string[] = [];
+
+    for (const t of transformations) {
+      const escapedCol = escapeTrinoIdentifier(t.column);
+
+      switch (t.kind) {
+        case "template": {
+          // Replace {column_name} with column references
+          let expr = `'${t.template.replace(/'/g, "''")}'`;
+          const refs = t.template.match(/\{([^}]+)\}/g) ?? [];
+          for (const ref of refs) {
+            const colName = ref.slice(1, -1);
+            const colRef = escapeTrinoIdentifier(colName);
+            // Replace {col} with concat function
+            expr = expr.replace(
+              `'{${colName}}'`,
+              `', cast(${colRef} as varchar), '`
+            );
+            expr = expr.replace(
+              `{${colName}}`,
+              `', cast(${colRef} as varchar), '`
+            );
+          }
+          // Wrap in concat and clean up
+          expr = `concat(${expr})`;
+          expr = expr.replace(/concat\('',\s*/g, "concat(");
+          expr = expr.replace(/,\s*''\)/g, ")");
+          expr = expr.replace(/concat\('([^']+)'\)/g, "'$1'"); // Single literal doesn't need concat
+          if (t.lowercase) {
+            expr = `lower(${expr})`;
+          }
+          setClauses.push(`${escapedCol} = ${expr}`);
+          break;
+        }
+        case "mutate": {
+          // Random string mutation using Trino functions
+          const { probability, operations } = t;
+          const op = operations[0] ?? "replace";
+          let mutateExpr: string;
+          // Trino random() returns double 0-1
+          const randomPos = `cast(floor(random() * length(${escapedCol})) + 1 as integer)`;
+
+          switch (op) {
+            case "replace":
+              // Replace random char with 'X'
+              mutateExpr = `concat(substr(${escapedCol}, 1, ${randomPos} - 1), 'X', substr(${escapedCol}, ${randomPos} + 1))`;
+              break;
+            case "delete":
+              // Delete random char
+              mutateExpr = `concat(substr(${escapedCol}, 1, ${randomPos} - 1), substr(${escapedCol}, ${randomPos} + 1))`;
+              break;
+            case "insert":
+              // Insert 'X' at random position
+              mutateExpr = `concat(substr(${escapedCol}, 1, ${randomPos}), 'X', substr(${escapedCol}, ${randomPos} + 1))`;
+              break;
+          }
+
+          setClauses.push(
+            `${escapedCol} = CASE WHEN random() < ${String(probability)} THEN ${mutateExpr} ELSE ${escapedCol} END`
+          );
+          break;
+        }
+      }
+    }
+
+    const updateSql = `UPDATE ${fullTableName} SET ${setClauses.join(", ")}`;
+    const result = await trino.query(updateSql);
+    for await (const _ of result) {
+      // consume result
     }
   }
 }

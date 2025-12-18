@@ -199,7 +199,96 @@ interface GenerateOptions {
   truncateFirst?: boolean; // Default: false
   resumeSequences?: boolean; // Default: true - continue from max value
   optimize?: boolean; // Default: true - run VACUUM/OPTIMIZE after insert
+  postTransformations?: Transformation[][]; // Post-generation transformations
 }
+```
+
+### Post-Generation Transformations
+
+Apply transformations to generated data after insertion. Useful for creating derived columns (like email from first/last name) or introducing realistic data quality issues.
+
+```typescript
+interface GenerateResult {
+  rowsInserted: number;
+  durationMs: number;
+  generateMs: number;
+  optimizeMs: number;
+  transformMs: number; // Time spent on post-transformations
+}
+```
+
+#### Transformation Types
+
+**Template Transformation** - Build column values from other columns:
+
+```typescript
+{
+  kind: "template",
+  column: "email",
+  template: "{first_name}.{last_name}@example.com",
+  lowercase: true  // Optional: convert result to lowercase
+}
+```
+
+**Mutate Transformation** - Introduce random character mutations:
+
+```typescript
+{
+  kind: "mutate",
+  column: "name",
+  probability: 0.1,  // 10% of rows get mutated
+  operations: ["replace", "delete", "insert"]  // First operation is used
+}
+```
+
+#### Batching Transformations
+
+Transformations use a two-level array for efficiency:
+- **Outer array**: Each element becomes a separate UPDATE statement (sequential)
+- **Inner array**: Transformations combined into a single UPDATE (parallel SET clauses)
+
+```typescript
+await generator.generate({
+  table,
+  rowCount: 10000,
+  postTransformations: [
+    // First UPDATE: generate emails
+    [
+      {
+        kind: "template",
+        column: "email",
+        template: "{first_name}.{last_name}@example.com",
+        lowercase: true,
+      },
+    ],
+    // Second UPDATE: introduce 10% typos in names
+    [
+      {
+        kind: "mutate",
+        column: "first_name",
+        probability: 0.1,
+        operations: ["replace"],
+      },
+      {
+        kind: "mutate",
+        column: "last_name",
+        probability: 0.1,
+        operations: ["replace"],
+      },
+    ],
+  ],
+});
+```
+
+This generates SQL like:
+```sql
+-- First batch
+UPDATE users SET email = lower(first_name || '.' || last_name || '@example.com');
+
+-- Second batch (combined)
+UPDATE users SET 
+  first_name = CASE WHEN random() < 0.1 THEN overlay(...) ELSE first_name END,
+  last_name = CASE WHEN random() < 0.1 THEN overlay(...) ELSE last_name END;
 ```
 
 ### Escape Utilities
