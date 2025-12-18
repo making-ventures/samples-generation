@@ -1,0 +1,103 @@
+services:
+  starter:
+    image: curlimages/curl:8.17.0
+    depends_on:
+      - postgres
+      - minio
+      - nessie
+      - trino
+      - clickhouse
+      - create-minio-bucket
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        set -e
+        echo "Waiting for Postgres..." && (until nc -z postgres 5432; do sleep 1; done)
+        echo "Waiting for MinIO..." && (until nc -z minio 9000; do sleep 1; done)
+        echo "Waiting for Nessie..." && (until curl -fs http://nessie:19120/; do sleep 1; done)
+        echo "Waiting for Trino..." && (until curl -fs http://trino:8080/v1/info; do sleep 1; done)
+        echo "Waiting for ClickHouse..." && (until curl -fs http://clickhouse:8123/ping; do sleep 1; done)
+        echo "All services ready"
+
+  postgres:
+    image: postgres:18.1-alpine
+    environment:
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_DB: appdb
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+
+  minio:
+    image: minio/minio:RELEASE.2025-09-07T16-13-09Z
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+
+  nessie:
+    image: ghcr.io/projectnessie/nessie:0.106.0
+    environment:
+      QUARKUS_HTTP_PORT: 19120
+    ports:
+      - "19120:19120"
+
+  trino:
+    image: trinodb/trino:479
+    depends_on:
+      - nessie
+      - minio
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./trino/config.properties:/etc/trino/config.properties:ro
+      - ./trino/jvm.config:/etc/trino/jvm.config:ro
+      - ./trino/catalog/iceberg.properties:/etc/trino/catalog/iceberg.properties:ro
+
+  create-minio-bucket:
+    image: minio/mc:RELEASE.2025-08-13T08-35-41Z
+    depends_on:
+      - minio
+    entrypoint: /bin/sh
+    command:
+      - -c
+      - |
+        set -e
+        until mc alias set local http://minio:9000 minioadmin minioadmin 2>/dev/null; do
+          echo "Waiting for MinIO..."
+          sleep 2
+        done
+        mc mb -p local/warehouse || true
+        mc anonymous set public local/warehouse || true
+        echo "Bucket 'warehouse' ready"
+
+  clickhouse:
+    image: clickhouse/clickhouse-server:25.1
+    environment:
+      CLICKHOUSE_USER: default
+      CLICKHOUSE_PASSWORD: clickhouse
+      CLICKHOUSE_DB: default
+    ports:
+      - "8123:8123"
+      - "9009:9000"
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+
+volumes:
+  pg_data:
+  pg_primary_data:
+  pg_replica1_data:
+  pg_replica2_data:
+  minio_data:
+  clickhouse_data:

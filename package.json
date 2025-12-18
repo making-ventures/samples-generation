@@ -15,12 +15,24 @@
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "compose:up": "docker compose -f compose/docker-compose.yml --profile single up starter",
+    "compose:down": "docker compose -f compose/docker-compose.yml down",
+    "compose:restart": "docker compose -f compose/docker-compose.yml restart",
+    "compose:reset": "docker compose -f compose/docker-compose.yml down --volumes --remove-orphans"
   },
-  "dependencies": {},
+  "dependencies": {
+    "@clickhouse/client": "^1.15.0",
+    "better-sqlite3": "^12.5.0",
+    "pg-format": "^1.0.4",
+    "postgres": "^3.4.7",
+    "trino-client": "^0.2.9"
+  },
   "devDependencies": {
     "@eslint/js": "^9.39.2",
+    "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^25.0.3",
+    "@types/pg-format": "^1.0.5",
     "eslint": "^9.39.2",
     "eslint-config-prettier": "^10.1.8",
     "prettier": "^3.7.4",
