@@ -267,8 +267,8 @@ export class TrinoDataGenerator extends BaseDataGenerator {
         : "";
 
     const insertSql = `
-      ${ctePrefix}INSERT INTO ${this.fullTableName(table.name)} (${columns.join(", ")})
-      SELECT ${expressions.join(", ")}
+      INSERT INTO ${this.fullTableName(table.name)} (${columns.join(", ")})
+      ${ctePrefix}SELECT ${expressions.join(", ")}
       FROM UNNEST(sequence(0, ${String(numChunks - 1)})) AS t1(level1)
       CROSS JOIN UNNEST(sequence(0, ${String(SEQUENCE_LIMIT - 1)})) AS t2(level2)
       CROSS JOIN UNNEST(sequence(1, ${String(SEQUENCE_LIMIT)})) AS t3(level3)${lookupJoins}

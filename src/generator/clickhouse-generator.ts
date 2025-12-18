@@ -180,6 +180,7 @@ export class ClickHouseDataGenerator extends BaseDataGenerator {
     const escapedTableName = escapeClickHouseIdentifier(table.name);
 
     // Collect choiceByLookup arrays for WITH clause
+    // ClickHouse syntax: WITH [values] AS name
     const arrayDefs: string[] = [];
     for (const col of table.columns) {
       if (col.generator.kind === "choiceByLookup") {
@@ -188,7 +189,7 @@ export class ClickHouseDataGenerator extends BaseDataGenerator {
         const valuesLiteral = gen.values
           .map((v) => `'${v.replace(/'/g, "\\'")}'`)
           .join(", ");
-        arrayDefs.push(`${arrName} AS [${valuesLiteral}]`);
+        arrayDefs.push(`[${valuesLiteral}] AS ${arrName}`);
       }
     }
 
@@ -207,12 +208,11 @@ export class ClickHouseDataGenerator extends BaseDataGenerator {
     });
 
     // Build WITH clause if we have lookup arrays
-    const withClause =
-      arrayDefs.length > 0 ? `WITH ${arrayDefs.join(", ")} ` : "";
+    const withClause = arrayDefs.length > 0 ? `${arrayDefs.join(", ")} ` : "";
 
     const insertSql = `
-      ${withClause}INSERT INTO ${escapedTableName} (${columns.join(", ")})
-      SELECT ${expressions.join(", ")}
+      INSERT INTO ${escapedTableName} (${columns.join(", ")})
+      ${withClause.length > 0 ? `WITH ${withClause}` : ""}SELECT ${expressions.join(", ")}
       FROM numbers(${String(rowCount)})
     `;
 
