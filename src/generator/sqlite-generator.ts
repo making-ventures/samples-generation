@@ -4,8 +4,10 @@ import type {
   GeneratedRow,
   ColumnConfig,
   GeneratorConfig,
+  ChoiceFromTableGenerator,
 } from "./types.js";
 import { BaseDataGenerator } from "./base-generator.js";
+import { getLookupTableName } from "./utils.js";
 
 export interface SQLiteConfig {
   path: string;
@@ -76,6 +78,12 @@ export function generatorToSqliteExpr(
         })
         .join(" ");
       return `CASE (abs(random()) % ${String(count)}) ${cases} END`;
+    }
+    case "choiceFromTable": {
+      // SQLite: use json_extract from the CTE json array
+      const cteName = getLookupTableName(gen.values);
+      const count = gen.values.length;
+      return `json_extract(${cteName}.arr, '$[' || (abs(random()) % ${String(count)}) || ']')`;
     }
     case "constant": {
       const val = gen.value;
@@ -154,6 +162,20 @@ export class SQLiteDataGenerator extends BaseDataGenerator {
   ): Promise<void> {
     const db = this.getDb();
 
+    // Collect choiceFromTable generators for additional CTEs
+    const lookupCtes: string[] = [];
+    for (const col of table.columns) {
+      if (col.generator.kind === "choiceFromTable") {
+        const gen = col.generator;
+        const cteName = getLookupTableName(gen.values);
+        // Store as JSON array
+        const jsonArray = JSON.stringify(gen.values);
+        lookupCtes.push(
+          `${cteName}(arr) AS (SELECT '${jsonArray.replace(/'/g, "''")}')`
+        );
+      }
+    }
+
     // Build column list and expressions
     const columns = table.columns.map((c) => c.name);
     const seqExpr = "n";
@@ -166,17 +188,39 @@ export class SQLiteDataGenerator extends BaseDataGenerator {
       return expr;
     });
 
-    // Use recursive CTE to generate sequence
-    // n starts from startSequence
-    const insertSql = `
-      WITH RECURSIVE seq(n) AS (
+    // Cross join with lookup CTEs
+    const lookupJoins =
+      lookupCtes.length > 0
+        ? ", " +
+          [
+            ...new Set(
+              table.columns
+                .filter((c) => c.generator.kind === "choiceFromTable")
+                .map((c) =>
+                  getLookupTableName(
+                    (c.generator as ChoiceFromTableGenerator).values
+                  )
+                )
+            ),
+          ].join(", ")
+        : "";
+
+    // Combine all CTEs
+    const allCtes = [
+      `seq(n) AS (
         SELECT ${String(startSequence)}
         UNION ALL
         SELECT n + 1 FROM seq WHERE n < ${String(startSequence + rowCount - 1)}
-      )
+      )`,
+      ...lookupCtes,
+    ];
+
+    // Use recursive CTE to generate sequence
+    const insertSql = `
+      WITH RECURSIVE ${allCtes.join(", ")}
       INSERT INTO ${table.name} (${columns.join(", ")})
       SELECT ${expressions.join(", ")}
-      FROM seq
+      FROM seq${lookupJoins}
     `;
 
     db.exec(insertSql);

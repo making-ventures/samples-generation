@@ -75,6 +75,14 @@ const generatorConfigs: {
     config: { kind: "uuid" },
     seqExpr: "n",
   },
+  {
+    name: "choiceFromTable",
+    config: {
+      kind: "choiceFromTable",
+      values: ["Smith", "Johnson", "Williams"],
+    },
+    seqExpr: "n",
+  },
 ];
 
 describe("generatorToPostgresExpr", () => {
@@ -150,6 +158,17 @@ describe("generatorToPostgresExpr", () => {
       generatorToPostgresExpr({ kind: "constant", value: null }, "n")
     ).toBe("null");
   });
+
+  it("should generate choiceFromTable expression", () => {
+    const result = generatorToPostgresExpr(
+      { kind: "choiceFromTable", values: ["Smith", "Johnson"] },
+      "n"
+    );
+    // Should reference the lookup CTE with array indexing
+    expect(result).toMatch(
+      /_lookup_[a-f0-9]+\.arr\[floor\(random\(\) \* array_length\(_lookup_[a-f0-9]+\.arr, 1\) \+ 1\)::int\]/
+    );
+  });
 });
 
 describe("generatorToClickHouseExpr", () => {
@@ -221,6 +240,17 @@ describe("generatorToClickHouseExpr", () => {
     expect(
       generatorToClickHouseExpr({ kind: "constant", value: 99 }, "n")
     ).toBe("99");
+  });
+
+  it("should generate choiceFromTable expression", () => {
+    const result = generatorToClickHouseExpr(
+      { kind: "choiceFromTable", values: ["Smith", "Johnson"] },
+      "n"
+    );
+    // Should reference the array variable with modulo indexing
+    expect(result).toMatch(
+      /_lookup_[a-f0-9]+_arr\[toUInt32\(rand\(\) % length\(_lookup_[a-f0-9]+_arr\)\) \+ 1\]/
+    );
   });
 });
 
@@ -296,6 +326,17 @@ describe("generatorToSqliteExpr", () => {
       "123"
     );
   });
+
+  it("should generate choiceFromTable expression", () => {
+    const result = generatorToSqliteExpr(
+      { kind: "choiceFromTable", values: ["Smith", "Johnson"] },
+      "n"
+    );
+    // Should reference the lookup CTE with JSON extraction
+    expect(result).toMatch(
+      /json_extract\(_lookup_[a-f0-9]+\.arr, '\$\[' \|\| \(abs\(random\(\)\) % 2\) \|\| '\]'\)/
+    );
+  });
 });
 
 describe("generatorToTrinoExpr", () => {
@@ -365,6 +406,17 @@ describe("generatorToTrinoExpr", () => {
       generatorToTrinoExpr({ kind: "constant", value: "value" }, "n")
     ).toBe("'value'");
     expect(generatorToTrinoExpr({ kind: "constant", value: 0 }, "n")).toBe("0");
+  });
+
+  it("should generate choiceFromTable expression", () => {
+    const result = generatorToTrinoExpr(
+      { kind: "choiceFromTable", values: ["Smith", "Johnson"] },
+      "n"
+    );
+    // Should reference the lookup CTE with element_at indexing
+    expect(result).toMatch(
+      /element_at\(_lookup_[a-f0-9]+\.arr, CAST\(floor\(random\(\) \* cardinality\(_lookup_[a-f0-9]+\.arr\)\) \+ 1 AS INTEGER\)\)/
+    );
   });
 });
 

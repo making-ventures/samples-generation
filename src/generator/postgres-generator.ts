@@ -4,9 +4,11 @@ import type {
   GeneratedRow,
   ColumnConfig,
   GeneratorConfig,
+  ChoiceFromTableGenerator,
 } from "./types.js";
 import { BaseDataGenerator } from "./base-generator.js";
 import { escapePostgresIdentifier } from "./escape.js";
+import { getLookupTableName } from "./utils.js";
 
 export interface PostgresConfig {
   host: string;
@@ -74,6 +76,11 @@ export function generatorToPostgresExpr(
         typeof v === "string" ? `'${v}'` : String(v)
       );
       return `(ARRAY[${arr.join(", ")}])[floor(random() * ${String(arr.length)} + 1)::int]`;
+    }
+    case "choiceFromTable": {
+      // Reference the CTE that will be added by generateNative
+      const cteName = getLookupTableName(gen.values);
+      return `${cteName}.arr[floor(random() * array_length(${cteName}.arr, 1) + 1)::int]`;
     }
     case "constant": {
       const val = gen.value;
@@ -157,6 +164,21 @@ export class PostgresDataGenerator extends BaseDataGenerator {
     const sql = this.getSql();
     const escapedTableName = escapePostgresIdentifier(table.name);
 
+    // Collect choiceFromTable generators to create CTEs
+    const lookupCtes: string[] = [];
+    for (const col of table.columns) {
+      if (col.generator.kind === "choiceFromTable") {
+        const gen = col.generator;
+        const cteName = getLookupTableName(gen.values);
+        const valuesLiteral = gen.values
+          .map((v) => `'${v.replace(/'/g, "''")}'`)
+          .join(", ");
+        lookupCtes.push(
+          `${cteName} AS (SELECT ARRAY[${valuesLiteral}] AS arr)`
+        );
+      }
+    }
+
     // Build column list and expressions
     const columns = table.columns.map((c) => escapePostgresIdentifier(c.name));
     const seqExpr = `(n + ${String(startSequence - 1)})`;
@@ -173,10 +195,30 @@ export class PostgresDataGenerator extends BaseDataGenerator {
       return expr;
     });
 
+    // Build CTE prefix if we have lookup tables
+    const ctePrefix =
+      lookupCtes.length > 0 ? `WITH ${lookupCtes.join(", ")} ` : "";
+    // Cross join with lookup CTEs to make them available
+    const lookupJoins =
+      lookupCtes.length > 0
+        ? ", " +
+          [
+            ...new Set(
+              table.columns
+                .filter((c) => c.generator.kind === "choiceFromTable")
+                .map((c) =>
+                  getLookupTableName(
+                    (c.generator as ChoiceFromTableGenerator).values
+                  )
+                )
+            ),
+          ].join(", ")
+        : "";
+
     const insertSql = `
-      INSERT INTO ${escapedTableName} (${columns.join(", ")})
+      ${ctePrefix}INSERT INTO ${escapedTableName} (${columns.join(", ")})
       SELECT ${expressions.join(", ")}
-      FROM generate_series(1, ${String(rowCount)}) AS n
+      FROM generate_series(1, ${String(rowCount)}) AS n${lookupJoins}
     `;
 
     await sql.unsafe(insertSql);

@@ -19,9 +19,11 @@ pnpm install
 
 Environment: local databases, simple setup, 1 billion rows, 5 columns (id, 10-char string, 0 - 1000 float, string choice out of 3 variants, datetime)
 
-*ClickHouse:* Generated in 6m 8s, optimize: 4m 54s, total: 11m 2s, table size: 23.81 GB
+_ClickHouse:_ Generated in 11m 2s (generation: 6m 8s, optimisation: 4m 54s), table size: 23.81 GB
 
-*Trino:* Generated in 5m 34s, optimize: 120ms, total: 5m 35s, table size: 17.41 GB
+_Trino:_ Generated in 5m 35s (generation: 5m 34s, optimisation: 120ms), table size: 17.41 GB
+
+Same setup but 10 billion rows:
 
 ## Quick Start
 
@@ -121,15 +123,15 @@ new TrinoDataGenerator({
 
 ### Column Types
 
-| Type       | PostgreSQL   | ClickHouse | SQLite  | Trino     |
-| ---------- | ------------ | ---------- | ------- | --------- |
-| `integer`  | INTEGER      | Int32      | INTEGER | INTEGER   |
-| `bigint`   | BIGINT       | Int64      | INTEGER | BIGINT    |
-| `float`    | NUMERIC      | Float64    | REAL    | DOUBLE    |
-| `string`   | TEXT         | String     | TEXT    | VARCHAR   |
-| `boolean`  | BOOLEAN      | Bool       | INTEGER | BOOLEAN   |
-| `datetime` | TIMESTAMP    | DateTime   | TEXT    | TIMESTAMP |
-| `date`     | DATE         | Date       | TEXT    | DATE      |
+| Type       | PostgreSQL | ClickHouse | SQLite  | Trino     |
+| ---------- | ---------- | ---------- | ------- | --------- |
+| `integer`  | INTEGER    | Int32      | INTEGER | INTEGER   |
+| `bigint`   | BIGINT     | Int64      | INTEGER | BIGINT    |
+| `float`    | NUMERIC    | Float64    | REAL    | DOUBLE    |
+| `string`   | TEXT       | String     | TEXT    | VARCHAR   |
+| `boolean`  | BOOLEAN    | Bool       | INTEGER | BOOLEAN   |
+| `datetime` | TIMESTAMP  | DateTime   | TEXT    | TIMESTAMP |
+| `date`     | DATE       | Date       | TEXT    | DATE      |
 
 ### Column Options
 
@@ -154,16 +156,37 @@ Example with nullable column:
 
 ### Value Generators
 
-| Generator      | Kind           | Options                   |
-| -------------- | -------------- | ------------------------- |
-| `sequence`     | Auto-increment | `start`, `step`           |
-| `randomInt`    | Random integer | `min`, `max`              |
-| `randomFloat`  | Random decimal | `min`, `max`, `precision` |
-| `randomString` | Random string  | `length`                  |
-| `choice`       | Pick from list | `values`                  |
-| `constant`     | Fixed value    | `value`                   |
-| `datetime`     | Random date    | `from`, `to`              |
-| `uuid`         | UUID v4        | -                         |
+| Generator         | Kind             | Options                   |
+| ----------------- | ---------------- | ------------------------- |
+| `sequence`        | Auto-increment   | `start`, `step`           |
+| `randomInt`       | Random integer   | `min`, `max`              |
+| `randomFloat`     | Random decimal   | `min`, `max`, `precision` |
+| `randomString`    | Random string    | `length`                  |
+| `choice`          | Pick from list   | `values`                  |
+| `choiceFromTable` | Optimized choice | `values` (large arrays)   |
+| `constant`        | Fixed value      | `value`                   |
+| `datetime`        | Random date      | `from`, `to`              |
+| `uuid`            | UUID v4          | -                         |
+
+#### `choiceFromTable` Generator
+
+Use `choiceFromTable` instead of `choice` when selecting from thousands of values. It uses CTEs with arrays for O(1) random selection, making it efficient for billions of rows:
+
+```typescript
+{
+  name: "last_name",
+  type: "string",
+  generator: {
+    kind: "choiceFromTable",
+    values: ["Smith", "Johnson", "Williams", ...] // thousands of values
+  }
+}
+```
+
+- PostgreSQL: CTE with `ARRAY[]` and `array_length()` indexing
+- ClickHouse: `WITH` clause with array variable
+- SQLite: CTE with JSON array and `json_extract()`
+- Trino: CTE with `ARRAY[]` and `element_at()`
 
 ### Generate Options
 
@@ -218,12 +241,12 @@ const size = await generator.getTableSizeForHuman("users");
 
 By default, `generate()` runs database-specific optimization after inserting rows:
 
-| Database   | Optimization                                                                  |
-| ---------- | ----------------------------------------------------------------------------- |
-| PostgreSQL | `VACUUM ANALYZE` - reclaims storage and updates statistics                    |
-| ClickHouse | `OPTIMIZE TABLE FINAL` - merges all parts for MergeTree engines               |
-| SQLite     | `VACUUM` + `ANALYZE` - rebuilds file and gathers statistics                   |
-| Trino      | `rewrite_data_files` + `expire_snapshots` + `remove_orphan_files` - Iceberg   |
+| Database   | Optimization                                                                |
+| ---------- | --------------------------------------------------------------------------- |
+| PostgreSQL | `VACUUM ANALYZE` - reclaims storage and updates statistics                  |
+| ClickHouse | `OPTIMIZE TABLE FINAL` - merges all parts for MergeTree engines             |
+| SQLite     | `VACUUM` + `ANALYZE` - rebuilds file and gathers statistics                 |
+| Trino      | `rewrite_data_files` + `expire_snapshots` + `remove_orphan_files` - Iceberg |
 
 Disable for quick tests:
 

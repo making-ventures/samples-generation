@@ -4,9 +4,11 @@ import type {
   GeneratedRow,
   ColumnConfig,
   GeneratorConfig,
+  ChoiceFromTableGenerator,
 } from "./types.js";
 import { BaseDataGenerator } from "./base-generator.js";
 import { escapeTrinoIdentifier } from "./escape.js";
+import { getLookupTableName } from "./utils.js";
 
 export interface TrinoConfig {
   host: string;
@@ -77,6 +79,11 @@ export function generatorToTrinoExpr(
       );
       // Use element_at with 1-based index
       return `element_at(ARRAY[${arr.join(", ")}], CAST(floor(random() * ${String(arr.length)}) + 1 AS INTEGER))`;
+    }
+    case "choiceFromTable": {
+      // Reference the CTE that will be added by generateNative
+      const cteName = getLookupTableName(gen.values);
+      return `element_at(${cteName}.arr, CAST(floor(random() * cardinality(${cteName}.arr)) + 1 AS INTEGER))`;
     }
     case "constant": {
       const val = gen.value;
@@ -202,6 +209,21 @@ export class TrinoDataGenerator extends BaseDataGenerator {
   ): Promise<void> {
     const trino = this.getTrino();
 
+    // Collect choiceFromTable generators to create CTEs
+    const lookupCtes: string[] = [];
+    for (const col of table.columns) {
+      if (col.generator.kind === "choiceFromTable") {
+        const gen = col.generator;
+        const cteName = getLookupTableName(gen.values);
+        const valuesLiteral = gen.values
+          .map((v) => `'${v.replace(/'/g, "''")}'`)
+          .join(", ");
+        lookupCtes.push(
+          `${cteName} AS (SELECT ARRAY[${valuesLiteral}] AS arr)`
+        );
+      }
+    }
+
     // Build column list and expressions
     const columns = table.columns.map((c) => escapeTrinoIdentifier(c.name));
     // Trino sequence() has a 10,000 entry limit
@@ -225,12 +247,31 @@ export class TrinoDataGenerator extends BaseDataGenerator {
       return expr;
     });
 
+    // Build WITH clause and cross joins for lookup CTEs
+    const ctePrefix =
+      lookupCtes.length > 0 ? `WITH ${lookupCtes.join(", ")} ` : "";
+    const lookupJoins =
+      lookupCtes.length > 0
+        ? " CROSS JOIN " +
+          [
+            ...new Set(
+              table.columns
+                .filter((c) => c.generator.kind === "choiceFromTable")
+                .map((c) =>
+                  getLookupTableName(
+                    (c.generator as ChoiceFromTableGenerator).values
+                  )
+                )
+            ),
+          ].join(" CROSS JOIN ")
+        : "";
+
     const insertSql = `
-      INSERT INTO ${this.fullTableName(table.name)} (${columns.join(", ")})
+      ${ctePrefix}INSERT INTO ${this.fullTableName(table.name)} (${columns.join(", ")})
       SELECT ${expressions.join(", ")}
       FROM UNNEST(sequence(0, ${String(numChunks - 1)})) AS t1(level1)
       CROSS JOIN UNNEST(sequence(0, ${String(SEQUENCE_LIMIT - 1)})) AS t2(level2)
-      CROSS JOIN UNNEST(sequence(1, ${String(SEQUENCE_LIMIT)})) AS t3(level3)
+      CROSS JOIN UNNEST(sequence(1, ${String(SEQUENCE_LIMIT)})) AS t3(level3)${lookupJoins}
       WHERE (level1 * ${String(ROWS_PER_CHUNK)} + level2 * ${String(SEQUENCE_LIMIT)} + level3) <= ${String(rowCount)}
     `;
 

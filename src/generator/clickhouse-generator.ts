@@ -7,6 +7,7 @@ import type {
 } from "./types.js";
 import { BaseDataGenerator } from "./base-generator.js";
 import { escapeClickHouseIdentifier } from "./escape.js";
+import { getLookupTableName } from "./utils.js";
 
 export interface ClickHouseConfig {
   host: string;
@@ -77,6 +78,12 @@ export function generatorToClickHouseExpr(
         typeof v === "string" ? `'${v}'` : String(v)
       );
       return `[${arr.join(", ")}][toUInt32(rand() % ${String(arr.length)}) + 1]`;
+    }
+    case "choiceFromTable": {
+      // For ClickHouse, we'll use a subquery that loads the array once
+      // The CTE approach doesn't work well, so we use arrayElement
+      const cteName = getLookupTableName(gen.values);
+      return `${cteName}_arr[toUInt32(rand() % length(${cteName}_arr)) + 1]`;
     }
     case "constant": {
       const val = gen.value;
@@ -172,6 +179,19 @@ export class ClickHouseDataGenerator extends BaseDataGenerator {
     const client = this.getClient();
     const escapedTableName = escapeClickHouseIdentifier(table.name);
 
+    // Collect choiceFromTable arrays for WITH clause
+    const arrayDefs: string[] = [];
+    for (const col of table.columns) {
+      if (col.generator.kind === "choiceFromTable") {
+        const gen = col.generator;
+        const arrName = `${getLookupTableName(gen.values)}_arr`;
+        const valuesLiteral = gen.values
+          .map((v) => `'${v.replace(/'/g, "\\'")}'`)
+          .join(", ");
+        arrayDefs.push(`${arrName} AS [${valuesLiteral}]`);
+      }
+    }
+
     // Build column list and expressions
     const columns = table.columns.map((c) =>
       escapeClickHouseIdentifier(c.name)
@@ -186,8 +206,12 @@ export class ClickHouseDataGenerator extends BaseDataGenerator {
       return expr;
     });
 
+    // Build WITH clause if we have lookup arrays
+    const withClause =
+      arrayDefs.length > 0 ? `WITH ${arrayDefs.join(", ")} ` : "";
+
     const insertSql = `
-      INSERT INTO ${escapedTableName} (${columns.join(", ")})
+      ${withClause}INSERT INTO ${escapedTableName} (${columns.join(", ")})
       SELECT ${expressions.join(", ")}
       FROM numbers(${String(rowCount)})
     `;

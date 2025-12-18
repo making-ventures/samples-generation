@@ -15,9 +15,10 @@ export type {
   ConstantGenerator,
   DatetimeGenerator,
   UuidGenerator,
+  ChoiceFromTableGenerator,
 } from "./types.js";
 
-export { formatBytes, formatDuration } from "./utils.js";
+export { formatBytes, formatDuration, getLookupTableName } from "./utils.js";
 
 export { BaseDataGenerator } from "./base-generator.js";
 export {
