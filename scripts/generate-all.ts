@@ -32,7 +32,7 @@ if (values.help) {
 Usage: npx tsx scripts/generate-all.ts [options]
 
 Options:
-  -r, --rows <count>  Number of rows to generate (default: 1000000000)
+  -r, --rows <count>  Number of rows to generate (default: 1000, supports 1_000_000 format)
   --sqlite            Generate for SQLite only
   --postgres          Generate for PostgreSQL only
   --clickhouse        Generate for ClickHouse only
@@ -49,7 +49,7 @@ Examples:
   process.exit(0);
 }
 
-const ROW_COUNT = parseInt(values.rows, 10);
+const ROW_COUNT = parseInt(values.rows.replace(/_/g, ""), 10);
 
 const TABLE_CONFIG: TableConfig = {
   name: "samples",
