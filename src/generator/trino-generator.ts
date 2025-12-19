@@ -241,8 +241,8 @@ export class TrinoDataGenerator extends BaseDataGenerator {
     const numChunks = Math.ceil(rowCount / ROWS_PER_CHUNK);
 
     // The row number expression combines all three levels
-    // Cast to BIGINT to handle >2B rows
-    const seqExpr = `(CAST(${String(startSequence - 1)} AS BIGINT) + CAST(level1 AS BIGINT) * ${String(ROWS_PER_CHUNK)} + CAST(level2 AS BIGINT) * ${String(SEQUENCE_LIMIT)} + level3)`;
+    // Cast to BIGINT to handle >2B rows - all multipliers must be BIGINT literals
+    const seqExpr = `(CAST(${String(startSequence - 1)} AS BIGINT) + CAST(level1 AS BIGINT) * BIGINT '${String(ROWS_PER_CHUNK)}' + CAST(level2 AS BIGINT) * BIGINT '${String(SEQUENCE_LIMIT)}' + level3)`;
     const expressions = table.columns.map((col) => {
       let expr = generatorToTrinoExpr(col.generator, seqExpr);
       // Apply null probability if specified
@@ -277,7 +277,7 @@ export class TrinoDataGenerator extends BaseDataGenerator {
       FROM UNNEST(sequence(0, ${String(numChunks - 1)})) AS t1(level1)
       CROSS JOIN UNNEST(sequence(0, ${String(SEQUENCE_LIMIT - 1)})) AS t2(level2)
       CROSS JOIN UNNEST(sequence(1, ${String(SEQUENCE_LIMIT)})) AS t3(level3)${lookupJoins}
-      WHERE (CAST(level1 AS BIGINT) * ${String(ROWS_PER_CHUNK)} + CAST(level2 AS BIGINT) * ${String(SEQUENCE_LIMIT)} + level3) <= ${String(rowCount)}
+      WHERE (CAST(level1 AS BIGINT) * BIGINT '${String(ROWS_PER_CHUNK)}' + CAST(level2 AS BIGINT) * BIGINT '${String(SEQUENCE_LIMIT)}' + level3) <= BIGINT '${String(rowCount)}'
     `;
 
     const query = await trino.query(insertSql);
