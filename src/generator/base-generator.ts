@@ -84,7 +84,7 @@ export abstract class BaseDataGenerator implements DataGenerator {
       ? `${table.name} (${table.description})`
       : table.name;
     console.log(
-      `[${this.name}] Generating: ${tableLabel} - ${String(rowCount)} rows`
+      `[${this.name}] Generating: ${tableLabel} - ${rowCount.toLocaleString()} rows`
     );
 
     if (dropFirst) {
