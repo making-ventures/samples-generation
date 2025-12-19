@@ -548,7 +548,7 @@ describe.each(generators.filter((g) => !g.skip))(
       }
     );
 
-    it("should apply lookup transformation", { timeout: 30_000 }, async () => {
+    it("should apply lookup transformation", async () => {
       // Create a lookup table (source of values)
       const lookupTable: TableConfig = {
         name: "test_lookup_source",
