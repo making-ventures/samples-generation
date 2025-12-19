@@ -54,7 +54,7 @@
   },
   "dependencies": {
     "@clickhouse/client": "^1.15.0",
-    "@mkven/name-dictionaries": "github:mkven/name-dictionaries",
+    "@mkven/name-dictionaries": "^0.1.0",
     "better-sqlite3": "^12.5.0",
     "pg-format": "^1.0.4",
     "postgres": "^3.4.7",

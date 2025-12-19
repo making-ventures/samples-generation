@@ -11,8 +11,8 @@ importers:
         specifier: ^1.15.0
         version: 1.15.0
       "@mkven/name-dictionaries":
-        specifier: github:mkven/name-dictionaries
-        version: git+https://git@github.com:mkven/name-dictionaries.git#5e353b4006f20c43f89e1a6443cc95e49c38276c
+        specifier: ^0.1.0
+        version: 0.1.0
       better-sqlite3:
         specifier: ^12.5.0
         version: 12.5.0
@@ -407,14 +407,11 @@ packages:
         integrity: sha512-cYQ9310grqxueWbl+WuIUIaiUaDcj7WOq5fVhEljNVgRfOUhY9fy2zTvfoqWsnebh8Sl70VScFbICvJnLKB0Og==,
       }
 
-  "@mkven/name-dictionaries@git+https://git@github.com:mkven/name-dictionaries.git#5e353b4006f20c43f89e1a6443cc95e49c38276c":
+  "@mkven/name-dictionaries@0.1.0":
     resolution:
       {
-        commit: 5e353b4006f20c43f89e1a6443cc95e49c38276c,
-        repo: git@github.com:mkven/name-dictionaries.git,
-        type: git,
+        integrity: sha512-l2AjFQpRNcOoog7rpuUcbBGP9Crtt6Kvnl+Bhforf8SehyctENoqM0pewNW91TJ6MAynN9kvUigEqEn2oxhfRg==,
       }
-    version: 0.1.0
     engines: { node: ">=18" }
 
   "@rollup/rollup-android-arm-eabi@4.53.5":
@@ -2177,8 +2174,7 @@ snapshots:
 
   "@jridgewell/sourcemap-codec@1.5.5": {}
 
-  "@mkven/name-dictionaries@git+https://git@github.com:mkven/name-dictionaries.git#5e353b4006f20c43f89e1a6443cc95e49c38276c":
-    {}
+  "@mkven/name-dictionaries@0.1.0": {}
 
   "@rollup/rollup-android-arm-eabi@4.53.5":
     optional: true
