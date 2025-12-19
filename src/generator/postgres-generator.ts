@@ -166,6 +166,10 @@ export class PostgresDataGenerator extends BaseDataGenerator {
     const sql = this.getSql();
     const escapedTableName = escapePostgresIdentifier(table.name);
 
+    // Production-safe optimizations for bulk inserts
+    await sql.unsafe(`SET synchronous_commit = off`);
+    await sql.unsafe(`SET work_mem = '256MB'`);
+
     // Collect choiceByLookup generators to create CTEs
     const lookupCtes: string[] = [];
     for (const col of table.columns) {
@@ -280,6 +284,11 @@ export class PostgresDataGenerator extends BaseDataGenerator {
     if (transformations.length === 0) return;
 
     const sql = this.getSql();
+
+    // Production-safe optimizations for bulk updates
+    await sql.unsafe(`SET synchronous_commit = off`);
+    await sql.unsafe(`SET work_mem = '256MB'`);
+
     const escapedTable = escapePostgresIdentifier(tableName);
     const setClauses: string[] = [];
 
