@@ -11,7 +11,7 @@ We often need to prefill tables during tests, checks, and measurements. These ge
 - **PostgreSQL** - via `postgres` package
 - **ClickHouse** - via `@clickhouse/client`
 - **SQLite** - via `better-sqlite3`
-- **Trino/Iceberg** - via `trino-client`
+- **Trino** - via `trino-client` (writes to Iceberg tables)
 
 ## Installation
 
