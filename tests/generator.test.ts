@@ -426,119 +426,127 @@ describe.each(generators.filter((g) => !g.skip))(
       await generator.dropTable(templateTable.name);
     });
 
-    it("should apply mutate transformation with probability", async () => {
-      const mutateTable: TableConfig = {
-        name: "test_mutate",
-        columns: [
-          {
-            name: "id",
-            type: "integer",
-            generator: { kind: "sequence", start: 1 },
-          },
-          {
-            name: "code",
-            type: "string",
-            generator: { kind: "constant", value: "AAAAAAAAAA" },
-          },
-        ],
-      };
-
-      await generator.dropTable(mutateTable.name);
-      await generator.createTable(mutateTable);
-      await generator.generate({
-        table: mutateTable,
-        rowCount: 100,
-        createTable: false,
-        optimize: false,
-      });
-
-      await generator.transform(mutateTable.name, [
-        {
-          transformations: [
+    it(
+      "should apply mutate transformation with probability",
+      { timeout: 30_000 },
+      async () => {
+        const mutateTable: TableConfig = {
+          name: "test_mutate",
+          columns: [
             {
-              kind: "mutate",
-              column: "code",
-              probability: 0.5,
-              operations: ["replace"],
+              name: "id",
+              type: "integer",
+              generator: { kind: "sequence", start: 1 },
+            },
+            {
+              name: "code",
+              type: "string",
+              generator: { kind: "constant", value: "AAAAAAAAAA" },
             },
           ],
-        },
-      ]);
+        };
 
-      const rows = await generator.queryRows(mutateTable.name, 100);
-      let mutatedCount = 0;
-      for (const row of rows) {
-        if (row.code !== "AAAAAAAAAA") {
-          mutatedCount++;
-          // Mutated values should contain an X
-          expect(row.code).toContain("X");
+        await generator.dropTable(mutateTable.name);
+        await generator.createTable(mutateTable);
+        await generator.generate({
+          table: mutateTable,
+          rowCount: 100,
+          createTable: false,
+          optimize: false,
+        });
+
+        await generator.transform(mutateTable.name, [
+          {
+            transformations: [
+              {
+                kind: "mutate",
+                column: "code",
+                probability: 0.5,
+                operations: ["replace"],
+              },
+            ],
+          },
+        ]);
+
+        const rows = await generator.queryRows(mutateTable.name, 100);
+        let mutatedCount = 0;
+        for (const row of rows) {
+          if (row.code !== "AAAAAAAAAA") {
+            mutatedCount++;
+            // Mutated values should contain an X
+            expect(row.code).toContain("X");
+          }
         }
+
+        // With 50% probability, expect roughly half to be mutated
+        expect(mutatedCount).toBeGreaterThanOrEqual(20);
+        expect(mutatedCount).toBeLessThanOrEqual(80);
+
+        await generator.dropTable(mutateTable.name);
       }
+    );
 
-      // With 50% probability, expect roughly half to be mutated
-      expect(mutatedCount).toBeGreaterThanOrEqual(20);
-      expect(mutatedCount).toBeLessThanOrEqual(80);
-
-      await generator.dropTable(mutateTable.name);
-    });
-
-    it("should apply mutate transformation with multiple random operations", async () => {
-      const mutateMultiTable: TableConfig = {
-        name: "test_mutate_multi",
-        columns: [
-          {
-            name: "id",
-            type: "integer",
-            generator: { kind: "sequence", start: 1 },
-          },
-          {
-            name: "code",
-            type: "string",
-            generator: { kind: "constant", value: "AAAAAAAAAA" },
-          },
-        ],
-      };
-
-      await generator.dropTable(mutateMultiTable.name);
-      await generator.createTable(mutateMultiTable);
-      await generator.generate({
-        table: mutateMultiTable,
-        rowCount: 100,
-        createTable: false,
-        optimize: false,
-      });
-
-      await generator.transform(mutateMultiTable.name, [
-        {
-          transformations: [
+    it(
+      "should apply mutate transformation with multiple random operations",
+      { timeout: 30_000 },
+      async () => {
+        const mutateMultiTable: TableConfig = {
+          name: "test_mutate_multi",
+          columns: [
             {
-              kind: "mutate",
-              column: "code",
-              probability: 1.0, // 100% mutation rate
-              operations: ["replace", "delete", "insert"],
+              name: "id",
+              type: "integer",
+              generator: { kind: "sequence", start: 1 },
+            },
+            {
+              name: "code",
+              type: "string",
+              generator: { kind: "constant", value: "AAAAAAAAAA" },
             },
           ],
-        },
-      ]);
+        };
 
-      const rows = await generator.queryRows(mutateMultiTable.name, 100);
-      let mutatedCount = 0;
+        await generator.dropTable(mutateMultiTable.name);
+        await generator.createTable(mutateMultiTable);
+        await generator.generate({
+          table: mutateMultiTable,
+          rowCount: 100,
+          createTable: false,
+          optimize: false,
+        });
 
-      for (const row of rows) {
-        const code = String(row.code);
-        // Any change from original counts as mutation
-        // Note: Due to SQL's random() evaluation, positions may vary chaotically
-        if (code !== "AAAAAAAAAA") {
-          mutatedCount++;
+        await generator.transform(mutateMultiTable.name, [
+          {
+            transformations: [
+              {
+                kind: "mutate",
+                column: "code",
+                probability: 1.0, // 100% mutation rate
+                operations: ["replace", "delete", "insert"],
+              },
+            ],
+          },
+        ]);
+
+        const rows = await generator.queryRows(mutateMultiTable.name, 100);
+        let mutatedCount = 0;
+
+        for (const row of rows) {
+          const code = String(row.code);
+          // Any change from original counts as mutation
+          // Note: Due to SQL's random() evaluation, positions may vary chaotically
+          if (code !== "AAAAAAAAAA") {
+            mutatedCount++;
+          }
         }
+
+        // With 100% probability, most rows should be mutated
+        // Some edge cases may occur due to SQL random() evaluation quirks
+        expect(mutatedCount).toBeGreaterThanOrEqual(90);
+
+        await generator.dropTable(mutateMultiTable.name);
       }
-
-      // With 100% probability, most rows should be mutated
-      // Some edge cases may occur due to SQL random() evaluation quirks
-      expect(mutatedCount).toBeGreaterThanOrEqual(90);
-
-      await generator.dropTable(mutateMultiTable.name);
-    });
+    );
 
     it("should apply lookup transformation", { timeout: 30_000 }, async () => {
       // Create a lookup table (source of values)
@@ -641,248 +649,260 @@ describe.each(generators.filter((g) => !g.skip))(
       await generator.dropTable(lookupTable.name);
     });
 
-    it("should apply lookups before template/mutate in same batch (ClickHouse behavior)", { timeout: 30_000 }, async () => {
-      // This test documents that lookup transformations execute BEFORE other
-      // transformations in the same batch due to ClickHouse's table swap approach.
-      // If order matters, use separate postTransformations batches.
+    it(
+      "should apply lookups before template/mutate in same batch (ClickHouse behavior)",
+      { timeout: 30_000 },
+      async () => {
+        // This test documents that lookup transformations execute BEFORE other
+        // transformations in the same batch due to ClickHouse's table swap approach.
+        // If order matters, use separate postTransformations batches.
 
-      const lookupTable: TableConfig = {
-        name: "test_order_lookup",
-        columns: [
-          {
-            name: "id",
-            type: "integer",
-            generator: { kind: "sequence", start: 1 },
-          },
-          {
-            name: "prefix",
-            type: "string",
-            generator: { kind: "constant", value: "LOOKED_UP" },
-          },
-        ],
-      };
-
-      const targetTable: TableConfig = {
-        name: "test_order_target",
-        columns: [
-          {
-            name: "id",
-            type: "integer",
-            generator: { kind: "sequence", start: 1 },
-          },
-          {
-            name: "lookup_id",
-            type: "integer",
-            generator: { kind: "constant", value: 1 },
-          },
-          {
-            name: "prefix",
-            type: "string",
-            generator: { kind: "constant", value: "INITIAL" },
-          },
-          {
-            name: "result",
-            type: "string",
-            generator: { kind: "constant", value: "" },
-          },
-        ],
-      };
-
-      await generator.dropTable(lookupTable.name);
-      await generator.dropTable(targetTable.name);
-
-      await generator.createTable(lookupTable);
-      await generator.generate({
-        table: lookupTable,
-        rowCount: 1,
-        createTable: false,
-        optimize: false,
-      });
-
-      await generator.createTable(targetTable);
-
-      // Apply lookup and template in the SAME batch
-      // Template references the 'prefix' column that lookup updates
-      await generator.generate({
-        table: targetTable,
-        rowCount: 5,
-        createTable: false,
-        optimize: false,
-      });
-
-      await generator.transform(targetTable.name, [
-        {
-          transformations: [
-            // Template declared first, but lookup executes first in ClickHouse
+        const lookupTable: TableConfig = {
+          name: "test_order_lookup",
+          columns: [
             {
-              kind: "template",
-              column: "result",
-              template: "prefix={prefix}",
+              name: "id",
+              type: "integer",
+              generator: { kind: "sequence", start: 1 },
             },
             {
-              kind: "lookup",
-              column: "prefix",
-              fromTable: "test_order_lookup",
-              fromColumn: "prefix",
-              joinOn: {
-                targetColumn: "lookup_id",
-                lookupColumn: "id",
+              name: "prefix",
+              type: "string",
+              generator: { kind: "constant", value: "LOOKED_UP" },
+            },
+          ],
+        };
+
+        const targetTable: TableConfig = {
+          name: "test_order_target",
+          columns: [
+            {
+              name: "id",
+              type: "integer",
+              generator: { kind: "sequence", start: 1 },
+            },
+            {
+              name: "lookup_id",
+              type: "integer",
+              generator: { kind: "constant", value: 1 },
+            },
+            {
+              name: "prefix",
+              type: "string",
+              generator: { kind: "constant", value: "INITIAL" },
+            },
+            {
+              name: "result",
+              type: "string",
+              generator: { kind: "constant", value: "" },
+            },
+          ],
+        };
+
+        await generator.dropTable(lookupTable.name);
+        await generator.dropTable(targetTable.name);
+
+        await generator.createTable(lookupTable);
+        await generator.generate({
+          table: lookupTable,
+          rowCount: 1,
+          createTable: false,
+          optimize: false,
+        });
+
+        await generator.createTable(targetTable);
+
+        // Apply lookup and template in the SAME batch
+        // Template references the 'prefix' column that lookup updates
+        await generator.generate({
+          table: targetTable,
+          rowCount: 5,
+          createTable: false,
+          optimize: false,
+        });
+
+        await generator.transform(targetTable.name, [
+          {
+            transformations: [
+              // Template declared first, but lookup executes first in ClickHouse
+              {
+                kind: "template",
+                column: "result",
+                template: "prefix={prefix}",
               },
-            },
-          ],
-        },
-      ]);
-
-      const rows = await generator.queryRows(targetTable.name, 5);
-
-      // In ClickHouse: lookup runs first, then template sees "LOOKED_UP"
-      // In Postgres/SQLite/Trino: transformations run in order, template sees "INITIAL"
-      for (const row of rows) {
-        expect(row.prefix).toBe("LOOKED_UP");
-        // Result depends on execution order:
-        // - ClickHouse: "prefix=LOOKED_UP" (lookup first)
-        // - Others: "prefix=INITIAL" (template first, then lookup overwrites prefix)
-        expect(["prefix=LOOKED_UP", "prefix=INITIAL"]).toContain(row.result);
-      }
-
-      await generator.dropTable(targetTable.name);
-      await generator.dropTable(lookupTable.name);
-    });
-
-    it("should apply swap transformation with probability", async () => {
-      // Test that swap transformation swaps two columns with given probability
-      const swapTable: TableConfig = {
-        name: "test_swap",
-        columns: [
-          {
-            name: "id",
-            type: "integer",
-            generator: { kind: "sequence", start: 1 },
+              {
+                kind: "lookup",
+                column: "prefix",
+                fromTable: "test_order_lookup",
+                fromColumn: "prefix",
+                joinOn: {
+                  targetColumn: "lookup_id",
+                  lookupColumn: "id",
+                },
+              },
+            ],
           },
-          {
-            name: "col_a",
-            type: "string",
-            generator: { kind: "constant", value: "AAA" },
-          },
-          {
-            name: "col_b",
-            type: "string",
-            generator: { kind: "constant", value: "BBB" },
-          },
-        ],
-      };
+        ]);
 
-      await generator.dropTable(swapTable.name);
-      await generator.createTable(swapTable);
+        const rows = await generator.queryRows(targetTable.name, 5);
 
-      // Generate 100 rows for statistical significance
-      await generator.generate({
-        table: swapTable,
-        rowCount: 100,
-        createTable: false,
-        optimize: false,
-      });
-
-      // Apply swap with 50% probability
-      await generator.transform(swapTable.name, [
-        {
-          transformations: [
-            {
-              kind: "swap",
-              column1: "col_a",
-              column2: "col_b",
-              probability: 0.5,
-            },
-          ],
-        },
-      ]);
-
-      const rows = await generator.queryRows(swapTable.name, 100);
-
-      // Count swapped vs unswapped rows
-      let swapped = 0;
-      let unswapped = 0;
-      for (const row of rows) {
-        if (row.col_a === "BBB" && row.col_b === "AAA") {
-          swapped++;
-        } else if (row.col_a === "AAA" && row.col_b === "BBB") {
-          unswapped++;
-        } else {
-          // This should never happen - both columns should swap together
-          throw new Error(
-            `Unexpected state: col_a=${row.col_a}, col_b=${row.col_b}`
-          );
+        // In ClickHouse: lookup runs first, then template sees "LOOKED_UP"
+        // In Postgres/SQLite/Trino: transformations run in order, template sees "INITIAL"
+        for (const row of rows) {
+          expect(row.prefix).toBe("LOOKED_UP");
+          // Result depends on execution order:
+          // - ClickHouse: "prefix=LOOKED_UP" (lookup first)
+          // - Others: "prefix=INITIAL" (template first, then lookup overwrites prefix)
+          expect(["prefix=LOOKED_UP", "prefix=INITIAL"]).toContain(row.result);
         }
+
+        await generator.dropTable(targetTable.name);
+        await generator.dropTable(lookupTable.name);
       }
+    );
 
-      // With 50% probability and 100 rows, expect roughly 50 swapped
-      // Allow wide margin (20-80) to avoid flaky tests
-      expect(swapped).toBeGreaterThan(20);
-      expect(swapped).toBeLessThan(80);
-      expect(swapped + unswapped).toBe(100);
-
-      await generator.dropTable(swapTable.name);
-    });
-
-    it("should support batch descriptions for transformations", async () => {
-      // This test verifies that TransformationBatch with descriptions works
-      const descTable: TableConfig = {
-        name: "test_batch_desc",
-        columns: [
-          {
-            name: "id",
-            type: "integer",
-            generator: { kind: "sequence", start: 1 },
-          },
-          {
-            name: "first_name",
-            type: "string",
-            generator: { kind: "constant", value: "John" },
-          },
-          {
-            name: "last_name",
-            type: "string",
-            generator: { kind: "constant", value: "Doe" },
-          },
-          {
-            name: "email",
-            type: "string",
-            generator: { kind: "constant", value: "" },
-          },
-        ],
-      };
-
-      await generator.dropTable(descTable.name);
-      await generator.createTable(descTable);
-
-      // Use object form with descriptions
-      await generator.generate({
-        table: descTable,
-        rowCount: 5,
-        createTable: false,
-        optimize: false,
-      });
-
-      await generator.transform(descTable.name, [
-        {
-          description: "Generate email from name",
-          transformations: [
+    it(
+      "should apply swap transformation with probability",
+      { timeout: 30_000 },
+      async () => {
+        // Test that swap transformation swaps two columns with given probability
+        const swapTable: TableConfig = {
+          name: "test_swap",
+          columns: [
             {
-              kind: "template",
-              column: "email",
-              template: "{first_name}.{last_name}@test.com",
-              lowercase: true,
+              name: "id",
+              type: "integer",
+              generator: { kind: "sequence", start: 1 },
+            },
+            {
+              name: "col_a",
+              type: "string",
+              generator: { kind: "constant", value: "AAA" },
+            },
+            {
+              name: "col_b",
+              type: "string",
+              generator: { kind: "constant", value: "BBB" },
             },
           ],
-        },
-      ]);
+        };
 
-      const rows = await generator.queryRows(descTable.name, 5);
-      for (const row of rows) {
-        expect(row.email).toBe("john.doe@test.com");
+        await generator.dropTable(swapTable.name);
+        await generator.createTable(swapTable);
+
+        // Generate 100 rows for statistical significance
+        await generator.generate({
+          table: swapTable,
+          rowCount: 100,
+          createTable: false,
+          optimize: false,
+        });
+
+        // Apply swap with 50% probability
+        await generator.transform(swapTable.name, [
+          {
+            transformations: [
+              {
+                kind: "swap",
+                column1: "col_a",
+                column2: "col_b",
+                probability: 0.5,
+              },
+            ],
+          },
+        ]);
+
+        const rows = await generator.queryRows(swapTable.name, 100);
+
+        // Count swapped vs unswapped rows
+        let swapped = 0;
+        let unswapped = 0;
+        for (const row of rows) {
+          if (row.col_a === "BBB" && row.col_b === "AAA") {
+            swapped++;
+          } else if (row.col_a === "AAA" && row.col_b === "BBB") {
+            unswapped++;
+          } else {
+            // This should never happen - both columns should swap together
+            throw new Error(
+              `Unexpected state: col_a=${String(row.col_a)}, col_b=${String(row.col_b)}`
+            );
+          }
+        }
+
+        // With 50% probability and 100 rows, expect roughly 50 swapped
+        // Allow wide margin (20-80) to avoid flaky tests
+        expect(swapped).toBeGreaterThan(20);
+        expect(swapped).toBeLessThan(80);
+        expect(swapped + unswapped).toBe(100);
+
+        await generator.dropTable(swapTable.name);
       }
+    );
 
-      await generator.dropTable(descTable.name);
-    });
+    it(
+      "should support batch descriptions for transformations",
+      { timeout: 30_000 },
+      async () => {
+        // This test verifies that TransformationBatch with descriptions works
+        const descTable: TableConfig = {
+          name: "test_batch_desc",
+          columns: [
+            {
+              name: "id",
+              type: "integer",
+              generator: { kind: "sequence", start: 1 },
+            },
+            {
+              name: "first_name",
+              type: "string",
+              generator: { kind: "constant", value: "John" },
+            },
+            {
+              name: "last_name",
+              type: "string",
+              generator: { kind: "constant", value: "Doe" },
+            },
+            {
+              name: "email",
+              type: "string",
+              generator: { kind: "constant", value: "" },
+            },
+          ],
+        };
+
+        await generator.dropTable(descTable.name);
+        await generator.createTable(descTable);
+
+        // Use object form with descriptions
+        await generator.generate({
+          table: descTable,
+          rowCount: 5,
+          createTable: false,
+          optimize: false,
+        });
+
+        await generator.transform(descTable.name, [
+          {
+            description: "Generate email from name",
+            transformations: [
+              {
+                kind: "template",
+                column: "email",
+                template: "{first_name}.{last_name}@test.com",
+                lowercase: true,
+              },
+            ],
+          },
+        ]);
+
+        const rows = await generator.queryRows(descTable.name, 5);
+        for (const row of rows) {
+          expect(row.email).toBe("john.doe@test.com");
+        }
+
+        await generator.dropTable(descTable.name);
+      }
+    );
   }
 );

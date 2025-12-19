@@ -162,17 +162,17 @@ Example with nullable column:
 
 ### Value Generators
 
-| Generator        | Kind             | Options                                   |
-| ---------------- | ---------------- | ----------------------------------------- |
-| `sequence`       | Auto-increment   | `start`, `step`                           |
-| `randomInt`      | Random integer   | `min`, `max`                              |
-| `randomFloat`    | Random float     | `min`, `max`, `precision` (default: 2)    |
-| `randomString`   | Random string    | `length`                                  |
-| `choice`         | Pick from list   | `values`                                  |
-| `choiceByLookup` | Optimized choice | `values` (large arrays)                   |
-| `constant`       | Fixed value      | `value`                                   |
-| `datetime`       | Random datetime  | `from`, `to`                              |
-| `uuid`           | UUID v4          | -                                         |
+| Generator        | Kind             | Options                                |
+| ---------------- | ---------------- | -------------------------------------- |
+| `sequence`       | Auto-increment   | `start`, `step`                        |
+| `randomInt`      | Random integer   | `min`, `max`                           |
+| `randomFloat`    | Random float     | `min`, `max`, `precision` (default: 2) |
+| `randomString`   | Random string    | `length`                               |
+| `choice`         | Pick from list   | `values`                               |
+| `choiceByLookup` | Optimized choice | `values` (large arrays)                |
+| `constant`       | Fixed value      | `value`                                |
+| `datetime`       | Random datetime  | `from`, `to`                           |
+| `uuid`           | UUID v4          | -                                      |
 
 #### `choiceByLookup` Generator
 
