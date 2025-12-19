@@ -31,6 +31,8 @@ _PostgreSQL:_ Generated in 54m 26s (generation: 35m 55s, optimisation: 18m 30s),
 
 Same setup but 10 billion rows:
 
+_ClickHouse:_ Generated in 4h 52m 21s (generation: 4h 47m 44s, optimisation: 4m 36s), table size: 248.38 GB
+
 ## Quick Start
 
 ### Using the Generator API
