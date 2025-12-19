@@ -352,7 +352,7 @@ describe("generatorToTrinoExpr", () => {
   it("should generate correct sequence expression", () => {
     expect(
       generatorToTrinoExpr({ kind: "sequence", start: 500, step: 100 }, "n")
-    ).toBe("(500 - 1 + n * 100)");
+    ).toBe("(CAST(500 - 1 AS BIGINT) + n * CAST(100 AS BIGINT))");
   });
 
   it("should generate randomInt expression", () => {
@@ -473,7 +473,7 @@ describe("SQL expression generators - edge cases", () => {
       "(1 - 1 + seq.n * 1)"
     );
     expect(generatorToTrinoExpr({ kind: "sequence" }, "t.n")).toBe(
-      "(1 - 1 + t.n * 1)"
+      "(CAST(1 - 1 AS BIGINT) + t.n * CAST(1 AS BIGINT))"
     );
   });
 

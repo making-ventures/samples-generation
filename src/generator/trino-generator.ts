@@ -61,7 +61,8 @@ export function generatorToTrinoExpr(
     case "sequence": {
       const start = gen.start ?? 1;
       const step = gen.step ?? 1;
-      return `(${String(start)} - 1 + ${seqExpr} * ${String(step)})`;
+      // Cast to BIGINT to handle >2B rows
+      return `(CAST(${String(start)} - 1 AS BIGINT) + ${seqExpr} * CAST(${String(step)} AS BIGINT))`;
     }
     case "randomInt":
       // Trino random() returns 0.0 to 1.0
