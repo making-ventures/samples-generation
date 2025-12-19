@@ -1,13 +1,40 @@
 {
   "name": "samples-generation",
   "version": "1.0.0",
-  "description": "Generating samples of data by database itself",
+  "description": "Generate sample data for PostgreSQL, ClickHouse, SQLite, and Trino with a unified interface",
   "author": "Damir Manapov",
   "license": "MIT",
   "type": "module",
   "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "keywords": [
+    "data-generation",
+    "sample-data",
+    "test-data",
+    "postgresql",
+    "clickhouse",
+    "sqlite",
+    "trino",
+    "database",
+    "faker",
+    "mock-data"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/manapovm/samples-generation"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
+    "prepublishOnly": "pnpm run build",
     "dev": "tsx src/index.ts",
     "test": "vitest run",
     "test:watch": "vitest",
