@@ -25,7 +25,7 @@ Environment: local databases, simple setup, 1 billion rows, 5 columns (id, 10-ch
 
 _ClickHouse:_ Generated in 11m 2s (generation: 6m 8s, optimisation: 4m 54s), table size: 23.81 GB
 
-_Trino:_ Generated in 5m 35s (generation: 5m 34s, optimisation: 120ms), table size: 17.41 GB
+_Trino:_ Generated in 6m 48s (generation: 6m 48s, optimisation: 140ms), table size: 17.41 GB
 
 _PostgreSQL:_ Generated in 54m 26s (generation: 35m 55s, optimisation: 18m 30s), table size: 63.60 GB
 
