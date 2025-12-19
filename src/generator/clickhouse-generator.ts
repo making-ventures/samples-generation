@@ -118,8 +118,8 @@ export class ClickHouseDataGenerator extends BaseDataGenerator {
       username: this.config.username,
       password: this.config.password,
       database: this.config.database,
-      // Increase timeout for large data generation (30 minutes)
-      request_timeout: 1_800_000,
+      // Increase timeout for large data generation (2 hours)
+      request_timeout: 7_200_000,
     });
     return Promise.resolve();
   }
