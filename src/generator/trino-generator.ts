@@ -7,6 +7,7 @@ import type {
   ChoiceByLookupGenerator,
   Transformation,
   MutationOperation,
+  SwapTransformation,
 } from "./types.js";
 import { BaseDataGenerator } from "./base-generator.js";
 import { escapeTrinoIdentifier } from "./escape.js";
@@ -406,10 +407,9 @@ export class TrinoDataGenerator extends BaseDataGenerator {
     const setClauses: string[] = [];
 
     for (const t of transformations) {
-      const escapedCol = escapeTrinoIdentifier(t.column);
-
       switch (t.kind) {
         case "template": {
+          const escapedCol = escapeTrinoIdentifier(t.column);
           // Replace {column_name} with column references
           let expr = `'${t.template.replace(/'/g, "''")}'`;
           const refs = t.template.match(/\{([^}]+)\}/g) ?? [];
@@ -438,6 +438,7 @@ export class TrinoDataGenerator extends BaseDataGenerator {
           break;
         }
         case "mutate": {
+          const escapedCol = escapeTrinoIdentifier(t.column);
           // Random string mutation using Trino functions
           const { probability, operations } = t;
           // Trino random() returns double 0-1
@@ -473,6 +474,7 @@ export class TrinoDataGenerator extends BaseDataGenerator {
           break;
         }
         case "lookup": {
+          const escapedCol = escapeTrinoIdentifier(t.column);
           // Lookup value from another table via join
           // Trino uses correlated subquery
           const lookupSchema = escapeTrinoIdentifier(this.config.schema);
@@ -487,8 +489,37 @@ export class TrinoDataGenerator extends BaseDataGenerator {
           );
           break;
         }
+        case "swap": {
+          // Swap handled separately - needs both columns in one UPDATE with same random
+          break;
+        }
       }
     }
+
+    // Handle swap transformations separately (need atomic swap with same random)
+    const swapTransformations = transformations.filter(
+      (t): t is SwapTransformation => t.kind === "swap"
+    );
+
+    for (const swap of swapTransformations) {
+      const col1 = escapeTrinoIdentifier(swap.column1);
+      const col2 = escapeTrinoIdentifier(swap.column2);
+      const prob = String(swap.probability);
+
+      // Trino: SET a = b, b = a works atomically (uses old values on right side)
+      const swapSql = `
+        UPDATE ${fullTableName} SET
+          ${col1} = ${col2},
+          ${col2} = ${col1}
+        WHERE random() < ${prob}
+      `;
+      const swapResult = await trino.query(swapSql);
+      for await (const _ of swapResult) {
+        // consume result
+      }
+    }
+
+    if (setClauses.length === 0) return;
 
     const updateSql = `UPDATE ${fullTableName} SET ${setClauses.join(", ")}`;
     const result = await trino.query(updateSql);

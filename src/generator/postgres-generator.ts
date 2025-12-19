@@ -7,6 +7,7 @@ import type {
   ChoiceByLookupGenerator,
   Transformation,
   MutationOperation,
+  SwapTransformation,
 } from "./types.js";
 import { BaseDataGenerator } from "./base-generator.js";
 import { escapePostgresIdentifier } from "./escape.js";
@@ -285,10 +286,9 @@ export class PostgresDataGenerator extends BaseDataGenerator {
     const setClauses: string[] = [];
 
     for (const t of transformations) {
-      const escapedCol = escapePostgresIdentifier(t.column);
-
       switch (t.kind) {
         case "template": {
+          const escapedCol = escapePostgresIdentifier(t.column);
           // Replace {column_name} with column references
           let expr = `'${t.template.replace(/'/g, "''")}'`;
           const refs = t.template.match(/\{([^}]+)\}/g) ?? [];
@@ -309,6 +309,7 @@ export class PostgresDataGenerator extends BaseDataGenerator {
           break;
         }
         case "mutate": {
+          const escapedCol = escapePostgresIdentifier(t.column);
           // Random string mutation
           const { probability, operations } = t;
 
@@ -342,6 +343,7 @@ export class PostgresDataGenerator extends BaseDataGenerator {
           break;
         }
         case "lookup": {
+          const escapedCol = escapePostgresIdentifier(t.column);
           // Lookup value from another table via join
           // PostgreSQL supports UPDATE ... FROM ... WHERE syntax
           const fromTable = escapePostgresIdentifier(t.fromTable);
@@ -355,8 +357,36 @@ export class PostgresDataGenerator extends BaseDataGenerator {
           );
           break;
         }
+        case "swap": {
+          // Swap handled separately - needs both columns in one UPDATE
+          // Skip here, will be handled after the loop
+          break;
+        }
       }
     }
+
+    // Handle swap transformations separately (need atomic swap with same random)
+    const swapTransformations = transformations.filter(
+      (t): t is SwapTransformation => t.kind === "swap"
+    );
+
+    for (const swap of swapTransformations) {
+      const col1 = escapePostgresIdentifier(swap.column1);
+      const col2 = escapePostgresIdentifier(swap.column2);
+      const prob = String(swap.probability);
+
+      // Use a subquery to ensure same random value for both columns
+      // PostgreSQL evaluates SET expressions using old values, so a = b, b = a works
+      const swapSql = `
+        UPDATE ${escapedTable} SET
+          ${col1} = ${col2},
+          ${col2} = ${col1}
+        WHERE random() < ${prob}
+      `;
+      await sql.unsafe(swapSql);
+    }
+
+    if (setClauses.length === 0) return;
 
     const updateSql = `UPDATE ${escapedTable} SET ${setClauses.join(", ")}`;
     await sql.unsafe(updateSql);

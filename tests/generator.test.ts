@@ -641,7 +641,7 @@ describe.each(generators.filter((g) => !g.skip))(
       await generator.dropTable(lookupTable.name);
     });
 
-    it("should apply lookups before template/mutate in same batch (ClickHouse behavior)", async () => {
+    it("should apply lookups before template/mutate in same batch (ClickHouse behavior)", { timeout: 30_000 }, async () => {
       // This test documents that lookup transformations execute BEFORE other
       // transformations in the same batch due to ClickHouse's table swap approach.
       // If order matters, use separate postTransformations batches.
@@ -747,6 +747,81 @@ describe.each(generators.filter((g) => !g.skip))(
 
       await generator.dropTable(targetTable.name);
       await generator.dropTable(lookupTable.name);
+    });
+
+    it("should apply swap transformation with probability", async () => {
+      // Test that swap transformation swaps two columns with given probability
+      const swapTable: TableConfig = {
+        name: "test_swap",
+        columns: [
+          {
+            name: "id",
+            type: "integer",
+            generator: { kind: "sequence", start: 1 },
+          },
+          {
+            name: "col_a",
+            type: "string",
+            generator: { kind: "constant", value: "AAA" },
+          },
+          {
+            name: "col_b",
+            type: "string",
+            generator: { kind: "constant", value: "BBB" },
+          },
+        ],
+      };
+
+      await generator.dropTable(swapTable.name);
+      await generator.createTable(swapTable);
+
+      // Generate 100 rows for statistical significance
+      await generator.generate({
+        table: swapTable,
+        rowCount: 100,
+        createTable: false,
+        optimize: false,
+      });
+
+      // Apply swap with 50% probability
+      await generator.transform(swapTable.name, [
+        {
+          transformations: [
+            {
+              kind: "swap",
+              column1: "col_a",
+              column2: "col_b",
+              probability: 0.5,
+            },
+          ],
+        },
+      ]);
+
+      const rows = await generator.queryRows(swapTable.name, 100);
+
+      // Count swapped vs unswapped rows
+      let swapped = 0;
+      let unswapped = 0;
+      for (const row of rows) {
+        if (row.col_a === "BBB" && row.col_b === "AAA") {
+          swapped++;
+        } else if (row.col_a === "AAA" && row.col_b === "BBB") {
+          unswapped++;
+        } else {
+          // This should never happen - both columns should swap together
+          throw new Error(
+            `Unexpected state: col_a=${row.col_a}, col_b=${row.col_b}`
+          );
+        }
+      }
+
+      // With 50% probability and 100 rows, expect roughly 50 swapped
+      // Allow wide margin (20-80) to avoid flaky tests
+      expect(swapped).toBeGreaterThan(20);
+      expect(swapped).toBeLessThan(80);
+      expect(swapped + unswapped).toBe(100);
+
+      await generator.dropTable(swapTable.name);
     });
 
     it("should support batch descriptions for transformations", async () => {

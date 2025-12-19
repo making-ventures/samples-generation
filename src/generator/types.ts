@@ -129,10 +129,25 @@ export interface LookupTransformation {
   };
 }
 
+/**
+ * Swap transformation - swap values of two columns with probability.
+ * Useful for simulating data entry errors where values are entered in wrong fields.
+ */
+export interface SwapTransformation {
+  kind: "swap";
+  /** First column to swap */
+  column1: string;
+  /** Second column to swap */
+  column2: string;
+  /** Probability of swap (0-1) */
+  probability: number;
+}
+
 export type Transformation =
   | TemplateTransformation
   | MutateTransformation
-  | LookupTransformation;
+  | LookupTransformation
+  | SwapTransformation;
 
 /**
  * A batch of transformations with optional description.

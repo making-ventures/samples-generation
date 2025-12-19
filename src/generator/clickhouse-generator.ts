@@ -7,6 +7,7 @@ import type {
   Transformation,
   MutationOperation,
   LookupTransformation,
+  SwapTransformation,
 } from "./types.js";
 import { BaseDataGenerator } from "./base-generator.js";
 import { escapeClickHouseIdentifier } from "./escape.js";
@@ -300,10 +301,9 @@ export class ClickHouseDataGenerator extends BaseDataGenerator {
     const setClauses: string[] = [];
 
     for (const t of transformations) {
-      const escapedCol = escapeClickHouseIdentifier(t.column);
-
       switch (t.kind) {
         case "template": {
+          const escapedCol = escapeClickHouseIdentifier(t.column);
           // Replace {column_name} with column references
           let expr = `'${t.template.replace(/'/g, "\\'")}'`;
           const refs = t.template.match(/\{([^}]+)\}/g) ?? [];
@@ -330,6 +330,7 @@ export class ClickHouseDataGenerator extends BaseDataGenerator {
           break;
         }
         case "mutate": {
+          const escapedCol = escapeClickHouseIdentifier(t.column);
           // Random string mutation using ClickHouse functions
           const { probability, operations } = t;
           // rand() returns UInt32, divide to get 0-1
@@ -377,10 +378,26 @@ export class ClickHouseDataGenerator extends BaseDataGenerator {
           // Don't add to setClauses - already handled
           break;
         }
+        case "swap": {
+          // Swap handled separately via applySwapTransformation
+          // ClickHouse evaluates each rand() separately, so we need table swap approach
+          // to ensure same random value is used for both columns
+          break;
+        }
       }
     }
 
-    // Only run ALTER TABLE UPDATE if there are non-lookup SET clauses
+    // Handle swap transformations separately for ClickHouse (need same random for both columns)
+    const swapTransformations = transformations.filter(
+      (t): t is SwapTransformation => t.kind === "swap"
+    );
+
+    if (swapTransformations.length > 0) {
+      // Batch all swaps into a single table swap operation
+      await this.applySwapTransformations(tableName, swapTransformations);
+    }
+
+    // Only run ALTER TABLE UPDATE if there are SET clauses
     if (setClauses.length === 0) return;
 
     // ClickHouse uses ALTER TABLE UPDATE syntax
@@ -392,6 +409,100 @@ export class ClickHouseDataGenerator extends BaseDataGenerator {
         mutations_sync: "2", // Wait for all replicas
       },
     });
+  }
+
+  /**
+   * Apply multiple swap transformations in a single table swap operation.
+   * Each swap gets its own random value to ensure independent swap decisions.
+   */
+  private async applySwapTransformations(
+    tableName: string,
+    swaps: SwapTransformation[]
+  ): Promise<void> {
+    const client = this.getClient();
+    const escapedTable = escapeClickHouseIdentifier(tableName);
+
+    // Create unique suffix for temp tables
+    const uniqueSuffix = `${String(Date.now())}_${Math.random().toString(36).slice(2, 8)}`;
+    const tempTable = escapeClickHouseIdentifier(
+      `${tableName}_swap_temp_${uniqueSuffix}`
+    );
+    const oldTable = escapeClickHouseIdentifier(
+      `${tableName}_swap_old_${uniqueSuffix}`
+    );
+
+    // Get table structure
+    const structResult = await client.query({
+      query: `SHOW CREATE TABLE ${escapedTable}`,
+      format: "TabSeparated",
+    });
+    const createStatement = await structResult.text();
+
+    // Create temp table with same structure
+    const tempCreateSql = createStatement.replace(
+      new RegExp(
+        `CREATE TABLE [^\\s]*(${tableName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})[^\\s]*`
+      ),
+      `CREATE TABLE ${tempTable}`
+    );
+    await client.command({ query: tempCreateSql });
+
+    // Get all columns
+    const colsResult = await client.query({
+      query: `SELECT name FROM system.columns WHERE database = currentDatabase() AND table = '${tableName}'`,
+      format: "JSONEachRow",
+    });
+    const colsData = await colsResult.json<{ name: string }>();
+    const allColumns = (colsData as { name: string }[]).map((c) =>
+      escapeClickHouseIdentifier(c.name)
+    );
+
+    // Build swap info map: column -> { otherColumn, probability, randVar }
+    const swapInfo = new Map<
+      string,
+      { otherCol: string; prob: string; randVar: string }
+    >();
+    swaps.forEach((swap, i) => {
+      const col1 = escapeClickHouseIdentifier(swap.column1);
+      const col2 = escapeClickHouseIdentifier(swap.column2);
+      const prob = String(swap.probability);
+      const randVar = `_swap_rand_${String(i)}`;
+      swapInfo.set(col1, { otherCol: col2, prob, randVar });
+      swapInfo.set(col2, { otherCol: col1, prob, randVar });
+    });
+
+    // Build SELECT with swap logic
+    const selectColumns = allColumns.map((col) => {
+      const info = swapInfo.get(col);
+      if (info) {
+        return `if(${info.randVar} < ${info.prob}, ${info.otherCol}, ${col}) as ${col}`;
+      }
+      return col;
+    });
+
+    // Build random variable definitions for subquery
+    const randVars = swaps
+      .map((_, i) => `rand() / 4294967295.0 as _swap_rand_${String(i)}`)
+      .join(", ");
+
+    // Use subquery to compute random values once per row
+    const insertSql = `
+      INSERT INTO ${tempTable}
+      SELECT ${selectColumns.join(", ")}
+      FROM (
+        SELECT *, ${randVars}
+        FROM ${escapedTable}
+      )
+    `;
+    await client.command({ query: insertSql });
+
+    // Swap tables
+    await client.command({
+      query: `RENAME TABLE ${escapedTable} TO ${oldTable}, ${tempTable} TO ${escapedTable}`,
+    });
+
+    // Drop old table
+    await client.command({ query: `DROP TABLE ${oldTable}` });
   }
 
   /**

@@ -7,6 +7,7 @@ import type {
   ChoiceByLookupGenerator,
   Transformation,
   MutationOperation,
+  SwapTransformation,
 } from "./types.js";
 import { BaseDataGenerator } from "./base-generator.js";
 import { getLookupTableName } from "./utils.js";
@@ -297,10 +298,9 @@ export class SQLiteDataGenerator extends BaseDataGenerator {
     const setClauses: string[] = [];
 
     for (const t of transformations) {
-      const escapedCol = escapeId(t.column);
-
       switch (t.kind) {
         case "template": {
+          const escapedCol = escapeId(t.column);
           // Replace {column_name} with column references
           let expr = `'${t.template.replace(/'/g, "''")}'`;
           const refs = t.template.match(/\{([^}]+)\}/g) ?? [];
@@ -321,6 +321,7 @@ export class SQLiteDataGenerator extends BaseDataGenerator {
           break;
         }
         case "mutate": {
+          const escapedCol = escapeId(t.column);
           // Random string mutation using SQLite functions
           const { probability, operations } = t;
           // SQLite random() returns int64, abs+modulo to get position
@@ -357,6 +358,7 @@ export class SQLiteDataGenerator extends BaseDataGenerator {
           break;
         }
         case "lookup": {
+          const escapedCol = escapeId(t.column);
           // Lookup value from another table via join
           // SQLite uses correlated subquery
           const fromTable = escapeId(t.fromTable);
@@ -369,8 +371,35 @@ export class SQLiteDataGenerator extends BaseDataGenerator {
           );
           break;
         }
+        case "swap": {
+          // Swap handled separately - needs both columns in one UPDATE
+          break;
+        }
       }
     }
+
+    // Handle swap transformations separately (need atomic swap with same random)
+    const swapTransformations = transformations.filter(
+      (t): t is SwapTransformation => t.kind === "swap"
+    );
+
+    for (const swap of swapTransformations) {
+      const col1 = escapeId(swap.column1);
+      const col2 = escapeId(swap.column2);
+      const prob = String(swap.probability);
+
+      // SQLite: random() returns int64, divide by max int64 for 0-1 range
+      // SET a = b, b = a works atomically in SQLite (uses old values on right side)
+      const swapSql = `
+        UPDATE ${escapedTable} SET
+          ${col1} = ${col2},
+          ${col2} = ${col1}
+        WHERE abs(random()) / 9223372036854775807.0 < ${prob}
+      `;
+      db.exec(swapSql);
+    }
+
+    if (setClauses.length === 0) return Promise.resolve();
 
     const updateSql = `UPDATE ${escapedTable} SET ${setClauses.join(", ")}`;
     db.exec(updateSql);

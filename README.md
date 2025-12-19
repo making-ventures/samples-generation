@@ -279,6 +279,21 @@ interface TransformResult {
 
 > **Note:** For ClickHouse, lookup transformation uses a table swap approach (CREATE → INSERT SELECT with JOIN → RENAME) since ClickHouse doesn't support correlated subqueries in `ALTER TABLE UPDATE`. This means lookups execute **before** other transformations in the same batch. If order matters, place lookups in a separate batch.
 
+**Swap Transformation** - Swap values between two columns with probability:
+
+```typescript
+{
+  kind: "swap",
+  column1: "first_name",
+  column2: "last_name",
+  probability: 0.1  // 10% of rows get swapped
+}
+```
+
+> **Note:** Both columns use the same random decision per row, ensuring atomic swaps (if column1 gets column2's value, column2 always gets column1's value). For ClickHouse, swap also uses the table swap approach (like lookup) since ClickHouse evaluates each `rand()` call separately. Multiple swaps in the same batch are combined into a single table swap operation for efficiency.
+
+> **Design Note:** PostgreSQL, SQLite, and Trino execute each swap as a separate `UPDATE ... WHERE random() < probability` statement. This is intentionally not batched because UPDATE is a lightweight operation on these databases. ClickHouse batches swaps because each swap would otherwise require a full table copy (CREATE → INSERT → RENAME → DROP), making the overhead significant.
+
 #### Batching Transformations
 
 Transformations are organized in batches for efficiency:
