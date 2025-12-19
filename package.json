@@ -1,6 +1,6 @@
 {
-  "name": "samples-generation",
-  "version": "1.0.0",
+  "name": "@mkven/samples-generation",
+  "version": "0.1.0",
   "description": "Generate sample data for PostgreSQL, ClickHouse, SQLite, and Trino with a unified interface",
   "author": "Damir Manapov",
   "license": "MIT",
@@ -32,6 +32,9 @@
     "type": "git",
     "url": "https://github.com/damir-manapov/samples-generation"
   },
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "prepublishOnly": "pnpm run build",
@@ -51,6 +54,7 @@
   },
   "dependencies": {
     "@clickhouse/client": "^1.15.0",
+    "@mkven/name-dictionaries": "github:mkven/name-dictionaries",
     "better-sqlite3": "^12.5.0",
     "pg-format": "^1.0.4",
     "postgres": "^3.4.7",
