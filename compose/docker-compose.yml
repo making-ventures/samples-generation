@@ -29,6 +29,20 @@ services:
       - "5432:5432"
     volumes:
       - pg_data:/var/lib/postgresql/data
+    # Tuned for bulk insert performance (dev/testing only)
+    command: >
+      postgres
+      -c shared_buffers=512MB
+      -c effective_cache_size=1GB
+      -c maintenance_work_mem=256MB
+      -c checkpoint_timeout=30min
+      -c max_wal_size=4GB
+      -c min_wal_size=1GB
+      -c wal_buffers=64MB
+      -c synchronous_commit=off
+      -c wal_writer_delay=1000ms
+      -c commit_delay=100000
+      -c random_page_cost=1.1
 
   minio:
     image: minio/minio:RELEASE.2025-09-07T16-13-09Z
