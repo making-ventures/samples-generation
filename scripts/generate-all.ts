@@ -1,3 +1,4 @@
+import { parseArgs } from "node:util";
 import {
   PostgresDataGenerator,
   ClickHouseDataGenerator,
@@ -8,10 +9,47 @@ import {
   type DataGenerator,
 } from "../src/generator/index.js";
 
-// Run: npx tsx scripts/generate-all.ts
-// Run: ROW_COUNT=1000 npx tsx scripts/generate-all.ts
-// Run: GENERATE_CLICKHOUSE=1 GENERATE_TRINO=1 npx tsx scripts/generate-all.ts
-// Run: GENERATE_CLICKHOUSE=1 npx tsx scripts/generate-all.ts
+// Usage:
+//   npx tsx scripts/generate-all.ts
+//   npx tsx scripts/generate-all.ts --rows 1000
+//   npx tsx scripts/generate-all.ts -r 1000 --postgres
+//   npx tsx scripts/generate-all.ts --clickhouse --trino
+//   npx tsx scripts/generate-all.ts --help
+
+const { values } = parseArgs({
+  options: {
+    rows: { type: "string", short: "r", default: "1000" },
+    sqlite: { type: "boolean", default: false },
+    postgres: { type: "boolean", default: false },
+    clickhouse: { type: "boolean", default: false },
+    trino: { type: "boolean", default: false },
+    help: { type: "boolean", short: "h", default: false },
+  },
+});
+
+if (values.help) {
+  console.log(`
+Usage: npx tsx scripts/generate-all.ts [options]
+
+Options:
+  -r, --rows <count>  Number of rows to generate (default: 1000000000)
+  --sqlite            Generate for SQLite only
+  --postgres          Generate for PostgreSQL only
+  --clickhouse        Generate for ClickHouse only
+  --trino             Generate for Trino only
+  -h, --help          Show this help message
+
+If no database is specified, all databases are generated.
+
+Examples:
+  npx tsx scripts/generate-all.ts --rows 1000
+  npx tsx scripts/generate-all.ts -r 10000 --postgres
+  npx tsx scripts/generate-all.ts --clickhouse --trino
+`);
+  process.exit(0);
+}
+
+const ROW_COUNT = parseInt(values.rows, 10);
 
 const TABLE_CONFIG: TableConfig = {
   name: "samples",
@@ -36,27 +74,22 @@ const TABLE_CONFIG: TableConfig = {
   ],
 };
 
-const DEFAULT_ROW_COUNT = 1_000_000_000;
-const ROW_COUNT = process.env.ROW_COUNT
-  ? parseInt(process.env.ROW_COUNT, 10)
-  : DEFAULT_ROW_COUNT;
-
 interface GeneratorEntry {
   name: string;
   generator: DataGenerator;
-  envVar: string;
+  flag: keyof typeof values;
 }
 
 function createGenerators(): GeneratorEntry[] {
   return [
     {
       name: "SQLite",
-      envVar: "GENERATE_SQLITE",
+      flag: "sqlite",
       generator: new SQLiteDataGenerator({ path: "data/samples.db" }),
     },
     {
       name: "PostgreSQL",
-      envVar: "GENERATE_POSTGRES",
+      flag: "postgres",
       generator: new PostgresDataGenerator({
         host: "localhost",
         port: 5432,
@@ -67,7 +100,7 @@ function createGenerators(): GeneratorEntry[] {
     },
     {
       name: "ClickHouse",
-      envVar: "GENERATE_CLICKHOUSE",
+      flag: "clickhouse",
       generator: new ClickHouseDataGenerator({
         host: "localhost",
         port: 8123,
@@ -78,7 +111,7 @@ function createGenerators(): GeneratorEntry[] {
     },
     {
       name: "Trino",
-      envVar: "GENERATE_TRINO",
+      flag: "trino",
       generator: new TrinoDataGenerator({
         host: "localhost",
         port: 8080,
@@ -134,10 +167,11 @@ async function main(): Promise<void> {
   );
 
   // Check which databases to generate for
-  const enableAll = !generators.some((g) => process.env[g.envVar] === "1");
+  const anyDbSelected = generators.some((g) => values[g.flag]);
+  const enableAll = !anyDbSelected;
 
   for (const entry of generators) {
-    const enabled = enableAll || process.env[entry.envVar] === "1";
+    const enabled = enableAll || values[entry.flag];
     if (enabled) {
       await generateForDatabase(entry);
     } else {

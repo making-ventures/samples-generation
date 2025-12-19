@@ -398,16 +398,20 @@ await generator.optimize("users");
 npx tsx scripts/generate-all.ts
 
 # Specify row count
-ROW_COUNT=1000 npx tsx scripts/generate-all.ts
+npx tsx scripts/generate-all.ts --rows 1000
+npx tsx scripts/generate-all.ts -r 1000
 
 # Generate for specific databases only
-GENERATE_SQLITE=1 npx tsx scripts/generate-all.ts
-GENERATE_POSTGRES=1 npx tsx scripts/generate-all.ts
-GENERATE_CLICKHOUSE=1 npx tsx scripts/generate-all.ts
-GENERATE_TRINO=1 npx tsx scripts/generate-all.ts
+npx tsx scripts/generate-all.ts --sqlite
+npx tsx scripts/generate-all.ts --postgres
+npx tsx scripts/generate-all.ts --clickhouse
+npx tsx scripts/generate-all.ts --trino
 
 # Combine options
-ROW_COUNT=10000 GENERATE_POSTGRES=1 npx tsx scripts/generate-all.ts
+npx tsx scripts/generate-all.ts -r 10000 --postgres --clickhouse
+
+# Show help
+npx tsx scripts/generate-all.ts --help
 ```
 
 ## Docker Compose
