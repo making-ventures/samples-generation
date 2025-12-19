@@ -906,3 +906,71 @@ describe.each(generators.filter((g) => !g.skip))(
     );
   }
 );
+
+// Trino-specific test for BIGINT overflow prevention
+describe.skipIf(!process.env.TEST_TRINO)(
+  "Trino BIGINT overflow prevention",
+  () => {
+    let generator: TrinoDataGenerator;
+
+    beforeAll(async () => {
+      generator = new TrinoDataGenerator({
+        host: "localhost",
+        port: 8080,
+        catalog: "iceberg",
+        schema: "test",
+        user: "trino",
+      });
+      await generator.connect();
+    });
+
+    afterAll(async () => {
+      await generator.disconnect();
+    });
+
+    it("should handle sequence starting at 2^31 without integer overflow", async () => {
+      // This tests the fix for "Out of range for integer: 2147483648" error
+      // when generating rows with IDs exceeding 32-bit integer range
+      const bigintTable: TableConfig = {
+        name: "test_bigint_overflow",
+        columns: [
+          {
+            name: "id",
+            type: "bigint",
+            generator: { kind: "sequence", start: 2147483648 }, // 2^31
+          },
+          {
+            name: "name",
+            type: "string",
+            generator: { kind: "constant", value: "test" },
+          },
+        ],
+      };
+
+      await generator.dropTable(bigintTable.name);
+      await generator.createTable(bigintTable);
+
+      // Generate just 5 rows - if BIGINT handling is broken, this will fail
+      const result = await generator.generate({
+        table: bigintTable,
+        rowCount: 5,
+        createTable: false,
+        optimize: false,
+      });
+
+      expect(result.rowsInserted).toBe(5);
+
+      const rows = await generator.queryRows(bigintTable.name, 5);
+      expect(rows.length).toBe(5);
+
+      // Verify IDs are in the expected BIGINT range
+      const ids = rows.map((r) => BigInt(r.id as string | number));
+      for (const id of ids) {
+        expect(id >= 2147483648n).toBe(true);
+        expect(id < 2147483653n).toBe(true); // start + 5
+      }
+
+      await generator.dropTable(bigintTable.name);
+    });
+  }
+);
