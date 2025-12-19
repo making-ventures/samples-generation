@@ -436,13 +436,15 @@ export class ClickHouseDataGenerator extends BaseDataGenerator {
       query: `SHOW CREATE TABLE ${escapedTable}`,
       format: "TabSeparated",
     });
-    const createStatement = await structResult.text();
+    // TabSeparated returns escaped newlines as literal \n, need to unescape
+    const createStatement = (await structResult.text())
+      .replace(/\\n/g, "\n")
+      .replace(/\\t/g, "\t");
 
     // Create temp table with same structure
+    // SHOW CREATE returns "CREATE TABLE database.tablename" - replace the full table reference
     const tempCreateSql = createStatement.replace(
-      new RegExp(
-        `CREATE TABLE [^\\s]*(${tableName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})[^\\s]*`
-      ),
+      /CREATE TABLE [^\s(]+/,
       `CREATE TABLE ${tempTable}`
     );
     await client.command({ query: tempCreateSql });
@@ -472,12 +474,13 @@ export class ClickHouseDataGenerator extends BaseDataGenerator {
     });
 
     // Build SELECT with swap logic
+    // Use _inner. prefix to avoid ClickHouse resolving column names to aliases
     const selectColumns = allColumns.map((col) => {
       const info = swapInfo.get(col);
       if (info) {
-        return `if(${info.randVar} < ${info.prob}, ${info.otherCol}, ${col}) as ${col}`;
+        return `if(${info.randVar} < ${info.prob}, _inner.${info.otherCol}, _inner.${col}) as ${col}`;
       }
-      return col;
+      return `_inner.${col}`;
     });
 
     // Build random variable definitions for subquery
@@ -486,13 +489,14 @@ export class ClickHouseDataGenerator extends BaseDataGenerator {
       .join(", ");
 
     // Use subquery to compute random values once per row
+    // Alias the subquery as _inner to avoid column name resolution issues
     const insertSql = `
       INSERT INTO ${tempTable}
       SELECT ${selectColumns.join(", ")}
       FROM (
         SELECT *, ${randVars}
         FROM ${escapedTable}
-      )
+      ) AS _inner
     `;
     await client.command({ query: insertSql });
 

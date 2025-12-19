@@ -54,7 +54,7 @@ const ROW_COUNT = parseInt(values.rows.replace(/_/g, ""), 10);
 const TABLE_CONFIG: TableConfig = {
   name: "samples",
   columns: [
-    { name: "id", type: "integer", generator: { kind: "sequence", start: 1 } },
+    { name: "id", type: "bigint", generator: { kind: "sequence", start: 1 } },
     {
       name: "name",
       type: "string",
