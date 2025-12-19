@@ -456,16 +456,19 @@ Services available:
 ## Testing
 
 ```bash
-# Run tests (SQLite only by default)
+# Run unit tests (SQL expression generators, escape functions)
 pnpm test
 
-# Run tests with specific databases
-TEST_POSTGRES=1 pnpm test
-TEST_CLICKHOUSE=1 pnpm test
-TEST_TRINO=1 pnpm test
+# Run e2e tests against SQLite (default, no setup required)
+pnpm test:e2e
 
-# Run all database tests
-TEST_POSTGRES=1 TEST_CLICKHOUSE=1 TEST_TRINO=1 pnpm test
+# Run e2e tests with specific databases (requires docker-compose up)
+TEST_POSTGRES=1 pnpm test:e2e
+TEST_CLICKHOUSE=1 pnpm test:e2e
+TEST_TRINO=1 pnpm test:e2e
+
+# Run e2e tests against all databases
+TEST_POSTGRES=1 TEST_CLICKHOUSE=1 TEST_TRINO=1 pnpm test:e2e
 
 # Or use the shortcut script
 ./test-all-dbs.sh
