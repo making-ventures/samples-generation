@@ -33,6 +33,8 @@ Same setup but 10 billion rows:
 
 _ClickHouse:_ Generated in 4h 52m 21s (generation: 4h 47m 44s, optimisation: 4m 36s), table size: 248.38 GB
 
+_Trino:_ Generated in 1h 4m 41s (generation: 1h 4m 41s, optimisation: 181ms), table size: 158.62 GB
+
 _Note:_ No database tuning was done to equalize resource consumption for fair comparison. For example, Trino is much more aggressive at consuming available resources by default than ClickHouse. This skew may be mitigated by proper configuration.
 
 ## Quick Start
