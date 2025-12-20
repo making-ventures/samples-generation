@@ -1,7 +1,11 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import * as fs from "fs";
 import * as path from "path";
-import type { DataGenerator, TableConfig } from "../src/generator/index.js";
+import type {
+  DataGenerator,
+  TableConfig,
+  Scenario,
+} from "../src/generator/index.js";
 import {
   PostgresDataGenerator,
   ClickHouseDataGenerator,
@@ -951,5 +955,257 @@ describe.each(generators.filter((g) => !g.skip))(
         await generator.dropTable(descTable.name);
       }
     );
+
+    it(
+      "should run a complete scenario with runScenario",
+      { timeout: 30_000 },
+      async () => {
+        const scenario = {
+          name: "Test scenario",
+          steps: [
+            {
+              table: {
+                name: "test_scenario",
+                columns: [
+                  {
+                    name: "id",
+                    type: "integer" as const,
+                    generator: { kind: "sequence" as const, start: 1 },
+                  },
+                  {
+                    name: "first_name",
+                    type: "string" as const,
+                    generator: {
+                      kind: "choice" as const,
+                      values: ["Alice", "Bob", "Charlie"],
+                    },
+                  },
+                  {
+                    name: "last_name",
+                    type: "string" as const,
+                    generator: {
+                      kind: "choice" as const,
+                      values: ["Smith", "Jones", "Brown"],
+                    },
+                  },
+                  {
+                    name: "email",
+                    type: "string" as const,
+                    generator: { kind: "constant" as const, value: "" },
+                  },
+                ],
+              },
+              rowCount: 10,
+              transformations: [
+                {
+                  description: "Generate email from names",
+                  transformations: [
+                    {
+                      kind: "template" as const,
+                      column: "email",
+                      template: "{first_name}.{last_name}@example.com",
+                      lowercase: true,
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        };
+
+        await generator.dropTable("test_scenario");
+
+        const result = await generator.runScenario({
+          scenario,
+        });
+
+        // Verify we have one step result
+        expect(result.steps.length).toBe(1);
+        const stepResult = result.steps[0];
+        expect(stepResult).toBeDefined();
+        expect(stepResult?.generate).toBeDefined();
+
+        // Verify generation results
+        expect(stepResult?.generate?.rowsInserted).toBe(10);
+        expect(stepResult?.generate?.generateMs).toBeGreaterThan(0);
+
+        // Verify transformation results
+        expect(stepResult?.transform).toBeDefined();
+        expect(stepResult?.transform?.batchesApplied).toBe(1);
+
+        // Verify total rows
+        expect(result.totalRowsInserted).toBe(10);
+        expect(result.durationMs).toBeGreaterThan(0);
+
+        // Verify data
+        const rows = await generator.queryRows("test_scenario", 10);
+        expect(rows.length).toBe(10);
+
+        // Check email format
+        for (const row of rows) {
+          const email = row.email as string;
+          expect(email).toMatch(/.+\..+@example\.com/);
+          expect(email).toBe(email.toLowerCase());
+        }
+
+        await generator.dropTable("test_scenario");
+      }
+    );
+
+    it(
+      "should run a multi-table scenario with runScenario",
+      { timeout: 30_000 },
+      async () => {
+        const scenario = {
+          name: "Multi-table test",
+          steps: [
+            {
+              table: {
+                name: "test_users",
+                columns: [
+                  {
+                    name: "id",
+                    type: "integer" as const,
+                    generator: { kind: "sequence" as const, start: 1 },
+                  },
+                  {
+                    name: "name",
+                    type: "string" as const,
+                    generator: { kind: "randomString" as const, length: 8 },
+                  },
+                ],
+              },
+              rowCount: 5,
+            },
+            {
+              table: {
+                name: "test_orders",
+                columns: [
+                  {
+                    name: "id",
+                    type: "integer" as const,
+                    generator: { kind: "sequence" as const, start: 1 },
+                  },
+                  {
+                    name: "amount",
+                    type: "float" as const,
+                    generator: {
+                      kind: "randomFloat" as const,
+                      min: 10,
+                      max: 100,
+                    },
+                  },
+                ],
+              },
+              rowCount: 15,
+            },
+          ],
+        };
+
+        await generator.dropTable("test_users");
+        await generator.dropTable("test_orders");
+
+        const result = await generator.runScenario({
+          scenario,
+        });
+
+        // Verify we have two step results
+        expect(result.steps.length).toBe(2);
+        expect(result.steps[0]?.tableName).toBe("test_users");
+        expect(result.steps[0]?.generate?.rowsInserted).toBe(5);
+        expect(result.steps[1]?.tableName).toBe("test_orders");
+        expect(result.steps[1]?.generate?.rowsInserted).toBe(15);
+
+        // Verify total rows
+        expect(result.totalRowsInserted).toBe(20);
+
+        // Verify data in both tables
+        const users = await generator.queryRows("test_users", 10);
+        expect(users.length).toBe(5);
+
+        const orders = await generator.queryRows("test_orders", 20);
+        expect(orders.length).toBe(15);
+
+        await generator.dropTable("test_users");
+        await generator.dropTable("test_orders");
+      }
+    );
+
+    it("should run a scenario with transform-only steps", async () => {
+      // Step 1: Generate users table with original data
+      // Step 2: Transform-only step to update the users table
+      const userTable: TableConfig = {
+        name: "test_users",
+        columns: [
+          {
+            name: "id",
+            type: "integer",
+            generator: { kind: "sequence", start: 1 },
+          },
+          {
+            name: "role",
+            type: "string",
+            generator: { kind: "constant", value: "original" },
+          },
+        ],
+      };
+
+      const scenario: Scenario = {
+        name: "transform-only-test",
+        description: "Test transform-only step",
+        steps: [
+          {
+            table: userTable,
+            rowCount: 10,
+          },
+          {
+            tableName: "test_users",
+            transformations: [
+              {
+                description: "Transform role to new value",
+                transformations: [
+                  {
+                    kind: "template",
+                    column: "role",
+                    template: "transformed",
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      };
+
+      const result = await generator.runScenario({
+        scenario,
+        dropFirst: true,
+        createTable: true,
+      });
+
+      expect(result.steps).toHaveLength(2);
+
+      // First step: generate
+      const step0 = result.steps[0]!; // eslint-disable-line @typescript-eslint/no-non-null-assertion
+      expect(step0.tableName).toBe("test_users");
+      expect(step0.generate?.rowsInserted).toBe(10);
+
+      // Second step: transform only (no generate)
+      const step1 = result.steps[1]!; // eslint-disable-line @typescript-eslint/no-non-null-assertion
+      expect(step1.tableName).toBe("test_users");
+      expect(step1.generate).toBeUndefined();
+      expect(step1.transform?.batchesApplied).toBe(1);
+
+      // Verify all rows have transformed role
+      const rows = await generator.queryRows("test_users", 20);
+      expect(rows.length).toBe(10);
+      for (const row of rows) {
+        expect(row.role).toBe("transformed");
+      }
+
+      // Total rows inserted should only count from generate steps
+      expect(result.totalRowsInserted).toBe(10);
+
+      await generator.dropTable("test_users");
+    });
   }
 );

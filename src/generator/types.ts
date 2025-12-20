@@ -178,11 +178,15 @@ export interface TableConfig {
   columns: ColumnConfig[];
 }
 
-export interface GenerateOptions {
-  table: TableConfig;
-  rowCount: number;
+/**
+ * Common options shared between generate() and runScenario()
+ */
+export interface CommonGenerateOptions {
+  /** Create tables if not exists (default: true) */
   createTable?: boolean;
+  /** Truncate tables before generating (default: false) */
   truncateFirst?: boolean;
+  /** Drop tables before generating (default: false) */
   dropFirst?: boolean;
   /**
    * If true, queries the table for max values of sequence columns
@@ -194,6 +198,11 @@ export interface GenerateOptions {
    * (VACUUM, OPTIMIZE TABLE, etc.). Default: true.
    */
   optimize?: boolean;
+}
+
+export interface GenerateOptions extends CommonGenerateOptions {
+  table: TableConfig;
+  rowCount: number;
 }
 
 export type GeneratedRow = Record<string, unknown>;
@@ -213,6 +222,101 @@ export interface TransformResult {
   durationMs: number;
   /** Number of batches applied */
   batchesApplied: number;
+}
+
+/**
+ * A single step in a scenario.
+ *
+ * Steps can be:
+ * 1. **Generate + Transform**: Provide `table`, `rowCount`, and optionally `transformations`
+ * 2. **Transform only**: Provide `tableName` and `transformations` (table must already exist)
+ */
+export type ScenarioStep = ScenarioGenerateStep | ScenarioTransformStep;
+
+/**
+ * A step that generates data into a table and optionally transforms it.
+ */
+export interface ScenarioGenerateStep {
+  /** Table configuration (schema + generators) */
+  table: TableConfig;
+  /** Number of rows to generate for this table */
+  rowCount: number;
+  /** Optional transformations to apply after generation */
+  transformations?: TransformationBatch[];
+}
+
+/**
+ * A step that only applies transformations to an existing table.
+ * Useful for cross-table lookups or applying transformations after all tables are generated.
+ */
+export interface ScenarioTransformStep {
+  /** Name of the existing table to transform */
+  tableName: string;
+  /** Transformations to apply */
+  transformations: TransformationBatch[];
+}
+
+/**
+ * A complete scenario with multiple tables and transformations.
+ * Use with runScenario() for a single-call multi-table data generation workflow.
+ *
+ * @example
+ * const scenario: Scenario = {
+ *   name: "E-commerce data",
+ *   steps: [
+ *     // Generate tables first
+ *     { table: usersTable, rowCount: 1000 },
+ *     { table: productsTable, rowCount: 500 },
+ *     { table: ordersTable, rowCount: 5000 },
+ *     // Then apply cross-table lookups
+ *     {
+ *       tableName: "orders",
+ *       transformations: [
+ *         { transformations: [{ kind: "lookup", column: "user_name", fromTable: "users", ... }] }
+ *       ]
+ *     },
+ *   ],
+ * };
+ */
+export interface Scenario {
+  /** Optional name for logging */
+  name?: string;
+  /** Optional description */
+  description?: string;
+  /** Steps to execute in order (each step = one table) */
+  steps: ScenarioStep[];
+}
+
+/**
+ * Options for running a scenario
+ */
+export interface ScenarioOptions extends CommonGenerateOptions {
+  /** The scenario to run */
+  scenario: Scenario;
+}
+
+/**
+ * Result of a single step in a scenario
+ */
+export interface ScenarioStepResult {
+  /** Table name */
+  tableName: string;
+  /** Generation result (undefined for transform-only steps) */
+  generate?: GenerateResult;
+  /** Transformation result (if transformations were defined) */
+  transform?: TransformResult;
+}
+
+/**
+ * Result of running a complete scenario
+ */
+export interface ScenarioResult {
+  /** Results for each step */
+  steps: ScenarioStepResult[];
+  /** Total rows inserted across all tables */
+  totalRowsInserted: number;
+  /** Total duration of the entire scenario */
+  durationMs: number;
 }
 
 // Main interface that all database implementations must follow
@@ -290,4 +394,10 @@ export interface DataGenerator {
    * - Trino/Iceberg: rewrite_data_files, expire_snapshots
    */
   optimize(tableName: string): Promise<void>;
+
+  /**
+   * Run a complete scenario: generate data and apply transformations.
+   * Combines generate() + transform() into a single call.
+   */
+  runScenario(options: ScenarioOptions): Promise<ScenarioResult>;
 }

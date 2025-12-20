@@ -2,6 +2,7 @@ export type {
   DataGenerator,
   TableConfig,
   ColumnConfig,
+  CommonGenerateOptions,
   GenerateOptions,
   GenerateResult,
   GeneratedRow,
@@ -20,8 +21,16 @@ export type {
   TemplateTransformation,
   MutateTransformation,
   LookupTransformation,
+  SwapTransformation,
   TransformationBatch,
   TransformResult,
+  ScenarioStep,
+  ScenarioGenerateStep,
+  ScenarioTransformStep,
+  Scenario,
+  ScenarioOptions,
+  ScenarioStepResult,
+  ScenarioResult,
 } from "./types.js";
 
 export { formatBytes, formatDuration, getLookupTableName } from "./utils.js";

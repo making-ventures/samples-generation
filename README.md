@@ -341,6 +341,99 @@ With descriptions, you'll see helpful logs:
 [postgres] Applying transformations: Introduce data quality issues (1 transformation(s))
 ```
 
+### Scenarios
+
+A `Scenario` combines table configuration with transformations, allowing you to define and run complete data generation workflows with a single call:
+
+```typescript
+import { PostgresDataGenerator, type Scenario } from "./src/generator/index.js";
+
+const userScenario: Scenario = {
+  table: {
+    name: "users",
+    columns: [
+      {
+        name: "id",
+        type: "integer",
+        generator: { kind: "sequence", start: 1 },
+      },
+      {
+        name: "first_name",
+        type: "string",
+        generator: { kind: "choiceByLookup", values: ["John", "Jane", "Bob"] },
+      },
+      {
+        name: "last_name",
+        type: "string",
+        generator: {
+          kind: "choiceByLookup",
+          values: ["Smith", "Jones", "Brown"],
+        },
+      },
+      {
+        name: "email",
+        type: "string",
+        generator: { kind: "randomString", length: 20 },
+      },
+    ],
+  },
+  transformations: [
+    {
+      description: "Generate email from names",
+      transformations: [
+        {
+          kind: "template",
+          column: "email",
+          template: "{first_name}.{last_name}@example.com",
+          lowercase: true,
+        },
+      ],
+    },
+  ],
+};
+
+const generator = new PostgresDataGenerator({
+  /* config */
+});
+await generator.connect();
+
+const result = await generator.runScenario({
+  scenario: userScenario,
+  rowCount: 10000,
+  dropFirst: true,
+});
+
+console.log(
+  `Generated ${result.generate.rowsInserted} rows in ${result.generate.generateMs}ms`
+);
+if (result.transform) {
+  console.log(
+    `Applied ${result.transform.batchesApplied} transformation batch(es) in ${result.transform.durationMs}ms`
+  );
+}
+console.log(`Total: ${result.durationMs}ms`);
+
+await generator.disconnect();
+```
+
+```typescript
+interface ScenarioOptions {
+  scenario: Scenario;
+  rowCount: number;
+  createTable?: boolean; // Default: true
+  dropFirst?: boolean; // Default: false
+  truncateFirst?: boolean; // Default: false
+  resumeSequences?: boolean; // Default: true
+  optimize?: boolean; // Default: true
+}
+
+interface ScenarioResult {
+  generate: GenerateResult;
+  transform?: TransformResult;
+  durationMs: number;
+}
+```
+
 ### Escape Utilities
 
 For custom queries, use the exported escape functions:

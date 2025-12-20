@@ -7,8 +7,18 @@ import type {
   Transformation,
   TransformationBatch,
   TransformResult,
+  ScenarioOptions,
+  ScenarioResult,
+  ScenarioStepResult,
+  ScenarioStep,
+  ScenarioGenerateStep,
 } from "./types.js";
 import { formatBytes } from "./utils.js";
+
+/** Type guard for generate steps */
+function isGenerateStep(step: ScenarioStep): step is ScenarioGenerateStep {
+  return "table" in step && "rowCount" in step;
+}
 
 export abstract class BaseDataGenerator implements DataGenerator {
   abstract readonly name: string;
@@ -153,6 +163,78 @@ export abstract class BaseDataGenerator implements DataGenerator {
     return {
       durationMs: Date.now() - startTime,
       batchesApplied,
+    };
+  }
+
+  async runScenario(options: ScenarioOptions): Promise<ScenarioResult> {
+    const startTime = Date.now();
+    const {
+      scenario,
+      createTable = true,
+      dropFirst = false,
+      truncateFirst = false,
+      resumeSequences = true,
+      optimize = true,
+    } = options;
+
+    if (scenario.name) {
+      console.log(`[${this.name}] Running scenario: ${scenario.name}`);
+    }
+
+    const stepResults: ScenarioStepResult[] = [];
+    let totalRowsInserted = 0;
+
+    for (const step of scenario.steps) {
+      if (isGenerateStep(step)) {
+        // Generate step: create table and insert rows
+        if (dropFirst) {
+          await this.dropTable(step.table.name);
+        }
+
+        const generateResult = await this.generate({
+          table: step.table,
+          rowCount: step.rowCount,
+          createTable,
+          dropFirst: false, // Already handled above
+          truncateFirst,
+          resumeSequences,
+          optimize,
+        });
+
+        // Apply transformations if defined
+        let transformResult: TransformResult | undefined;
+        if (step.transformations && step.transformations.length > 0) {
+          transformResult = await this.transform(
+            step.table.name,
+            step.transformations
+          );
+        }
+
+        stepResults.push({
+          tableName: step.table.name,
+          generate: generateResult,
+          transform: transformResult,
+        });
+
+        totalRowsInserted += generateResult.rowsInserted;
+      } else {
+        // Transform-only step: just apply transformations to existing table
+        const transformResult = await this.transform(
+          step.tableName,
+          step.transformations
+        );
+
+        stepResults.push({
+          tableName: step.tableName,
+          transform: transformResult,
+        });
+      }
+    }
+
+    return {
+      steps: stepResults,
+      totalRowsInserted,
+      durationMs: Date.now() - startTime,
     };
   }
 }
