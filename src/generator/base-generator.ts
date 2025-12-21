@@ -191,6 +191,7 @@ export abstract class BaseDataGenerator implements DataGenerator {
           await this.dropTable(step.table.name);
         }
 
+        // Don't optimize during steps - we'll optimize all tables at the end
         const generateResult = await this.generate({
           table: step.table,
           rowCount: step.rowCount,
@@ -198,7 +199,7 @@ export abstract class BaseDataGenerator implements DataGenerator {
           dropFirst: false, // Already handled above
           truncateFirst,
           resumeSequences,
-          optimize,
+          optimize: false,
         });
 
         // Apply transformations if defined
@@ -228,6 +229,14 @@ export abstract class BaseDataGenerator implements DataGenerator {
           tableName: step.tableName,
           transform: transformResult,
         });
+      }
+    }
+
+    // Optimize all touched tables once at the end
+    if (optimize) {
+      const uniqueTables = [...new Set(stepResults.map((s) => s.tableName))];
+      for (const tableName of uniqueTables) {
+        await this.optimize(tableName);
       }
     }
 

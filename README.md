@@ -21,7 +21,11 @@ pnpm install
 
 ## Measurements of simple generations
 
-Environment: local databases, simple setup, 1 billion rows, 5 columns (id, 10-char string, 0 - 1000 float, string choice out of 3 variants, datetime)
+Environment: local databases, simple setup, 1 billion rows
+
+### Trivial generation
+
+5 columns (id, 10-char string, 0 - 1000 float, string choice out of 3 variants, datetime)
 
 _ClickHouse:_ Generated in 11m 2s (generation: 6m 8s, optimisation: 4m 54s), table size: 23.81 GB
 
@@ -35,7 +39,19 @@ _ClickHouse:_ Generated in 4h 52m 21s (generation: 4h 47m 44s, optimisation: 4m 
 
 _Trino:_ Generated in 1h 4m 41s (generation: 1h 4m 41s, optimisation: 181ms), table size: 158.62 GB
 
-_Note:_ No database tuning was done to equalize resource consumption for fair comparison. For example, Trino is much more aggressive at consuming available resources by default than ClickHouse. This skew may be mitigated by proper configuration.
+### Names, then templated email based on generated names
+
+7 columns total.
+
+English names:
+
+_ClickHouse:_ Generated in 41m 48s (generation: 35m 9s, optimisation: 2m 42s, transformation: 3m 55s), table size: 44.97 GB
+
+_Trino:_ Generated in 27m 20s (generation: 4m 52s, optimisation: 66ms, transformation: 22m 28s), table size: 33.93 GB
+
+### Note
+
+No database tuning was done to equalize resource consumption for fair comparison. For example, Trino is much more aggressive at consuming available resources by default than ClickHouse. This skew may be mitigated by proper configuration.
 
 ## Quick Start
 

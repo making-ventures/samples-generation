@@ -121,6 +121,10 @@ export class ClickHouseDataGenerator extends BaseDataGenerator {
       database: this.config.database,
       // Increase timeout for large data generation (6 hours for 10B+ rows)
       request_timeout: 21_600_000,
+      // Increase max query size for large lookup tables (default is 256KB)
+      clickhouse_settings: {
+        max_query_size: "10000000", // 10MB
+      },
     });
     return Promise.resolve();
   }
