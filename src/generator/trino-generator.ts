@@ -134,9 +134,7 @@ export class TrinoDataGenerator extends BaseDataGenerator {
     const createSchema = await this.trino.query(
       `CREATE SCHEMA IF NOT EXISTS ${this.fullSchemaPath}`
     );
-    for await (const _ of createSchema) {
-      // consume iterator
-    }
+    await this.executeQuery(createSchema, "connect");
   }
 
   disconnect(): Promise<void> {
@@ -149,6 +147,24 @@ export class TrinoDataGenerator extends BaseDataGenerator {
       throw new Error("Not connected to Trino");
     }
     return this.trino;
+  }
+
+  /**
+   * Consume a Trino query iterator and throw on error.
+   * Use for DDL/DML statements that don't return data.
+   */
+  private async executeQuery(
+    query: AsyncIterable<unknown>,
+    operation: string
+  ): Promise<void> {
+    for await (const result of query) {
+      const trinoResult = result as { error?: { message: string } };
+      if (trinoResult.error) {
+        throw new Error(
+          `Trino ${operation} failed: ${trinoResult.error.message}`
+        );
+      }
+    }
   }
 
   private fullTableName(tableName: string): string {
@@ -167,14 +183,7 @@ export class TrinoDataGenerator extends BaseDataGenerator {
     const query = await trino.query(
       `CREATE TABLE IF NOT EXISTS ${this.fullTableName(table.name)} (${columns}) WITH (format = 'PARQUET')`
     );
-    for await (const result of query) {
-      const trinoResult = result as { error?: { message: string } };
-      if (trinoResult.error) {
-        throw new Error(
-          `Trino createTable failed: ${trinoResult.error.message}`
-        );
-      }
-    }
+    await this.executeQuery(query, "createTable");
   }
 
   async truncateTable(tableName: string): Promise<void> {
@@ -182,14 +191,7 @@ export class TrinoDataGenerator extends BaseDataGenerator {
     const query = await trino.query(
       `DELETE FROM ${this.fullTableName(tableName)}`
     );
-    for await (const result of query) {
-      const trinoResult = result as { error?: { message: string } };
-      if (trinoResult.error) {
-        throw new Error(
-          `Trino truncateTable failed: ${trinoResult.error.message}`
-        );
-      }
-    }
+    await this.executeQuery(query, "truncateTable");
   }
 
   async dropTable(tableName: string): Promise<void> {
@@ -197,13 +199,7 @@ export class TrinoDataGenerator extends BaseDataGenerator {
     const query = await trino.query(
       `DROP TABLE IF EXISTS ${this.fullTableName(tableName)}`
     );
-    for await (const result of query) {
-      // Check for errors in Trino response
-      const trinoResult = result as { error?: { message: string } };
-      if (trinoResult.error) {
-        throw new Error(`Trino query failed: ${trinoResult.error.message}`);
-      }
-    }
+    await this.executeQuery(query, "dropTable");
   }
 
   protected async generateNative(
@@ -281,12 +277,7 @@ export class TrinoDataGenerator extends BaseDataGenerator {
     `;
 
     const query = await trino.query(insertSql);
-    for await (const result of query) {
-      const trinoResult = result as { error?: { message: string } };
-      if (trinoResult.error) {
-        throw new Error(`Trino insert failed: ${trinoResult.error.message}`);
-      }
-    }
+    await this.executeQuery(query, "insert");
   }
 
   async queryRows(tableName: string, limit = 100): Promise<GeneratedRow[]> {
@@ -300,7 +291,11 @@ export class TrinoDataGenerator extends BaseDataGenerator {
       const trinoResult = result as {
         columns?: { name: string }[];
         data?: unknown[][];
+        error?: { message: string };
       };
+      if (trinoResult.error) {
+        throw new Error(`Trino queryRows failed: ${trinoResult.error.message}`);
+      }
       if (trinoResult.data && trinoResult.columns) {
         for (const row of trinoResult.data) {
           const obj: GeneratedRow = {};
@@ -321,7 +316,13 @@ export class TrinoDataGenerator extends BaseDataGenerator {
     );
 
     for await (const result of query) {
-      const trinoResult = result as { data?: unknown[][] };
+      const trinoResult = result as {
+        data?: unknown[][];
+        error?: { message: string };
+      };
+      if (trinoResult.error) {
+        throw new Error(`Trino countRows failed: ${trinoResult.error.message}`);
+      }
       const firstRow = trinoResult.data?.[0];
       if (firstRow && firstRow.length > 0) {
         return Number(firstRow[0]);
@@ -340,7 +341,15 @@ export class TrinoDataGenerator extends BaseDataGenerator {
     );
 
     for await (const result of query) {
-      const trinoResult = result as { data?: unknown[][] };
+      const trinoResult = result as {
+        data?: unknown[][];
+        error?: { message: string };
+      };
+      if (trinoResult.error) {
+        throw new Error(
+          `Trino getMaxValue failed: ${trinoResult.error.message}`
+        );
+      }
       const firstRow = trinoResult.data?.[0];
       if (firstRow && firstRow.length > 0 && firstRow[0] !== null) {
         return Number(firstRow[0]);
@@ -359,7 +368,15 @@ export class TrinoDataGenerator extends BaseDataGenerator {
     );
 
     for await (const result of query) {
-      const trinoResult = result as { data?: unknown[][] };
+      const trinoResult = result as {
+        data?: unknown[][];
+        error?: { message: string };
+      };
+      if (trinoResult.error) {
+        throw new Error(
+          `Trino getTableSize failed: ${trinoResult.error.message}`
+        );
+      }
       const firstRow = trinoResult.data?.[0];
       if (firstRow && firstRow.length > 0) {
         return Number(firstRow[0]);
@@ -376,26 +393,19 @@ export class TrinoDataGenerator extends BaseDataGenerator {
     const rewriteQuery = await trino.query(
       `ALTER TABLE ${fullTableName} EXECUTE rewrite_data_files(min_file_size_bytes => 10485760)`
     );
-    // Consume the iterator to complete the query
-    for await (const _ of rewriteQuery) {
-      // no-op
-    }
+    await this.executeQuery(rewriteQuery, "optimize (rewrite_data_files)");
 
     // Remove old snapshots older than 1 day to reclaim storage
     const expireQuery = await trino.query(
       `ALTER TABLE ${fullTableName} EXECUTE expire_snapshots(retention_threshold => '1d')`
     );
-    for await (const _ of expireQuery) {
-      // no-op
-    }
+    await this.executeQuery(expireQuery, "optimize (expire_snapshots)");
 
     // Remove orphan files not referenced by any snapshot
     const orphanQuery = await trino.query(
       `ALTER TABLE ${fullTableName} EXECUTE remove_orphan_files(retention_threshold => '1d')`
     );
-    for await (const _ of orphanQuery) {
-      // no-op
-    }
+    await this.executeQuery(orphanQuery, "optimize (remove_orphan_files)");
   }
 
   protected async applyTransformations(
@@ -516,27 +526,13 @@ export class TrinoDataGenerator extends BaseDataGenerator {
         WHERE random() < ${prob}
       `;
       const swapResult = await trino.query(swapSql);
-      for await (const result of swapResult) {
-        const trinoResult = result as { error?: { message: string } };
-        if (trinoResult.error) {
-          throw new Error(
-            `Trino swap transformation failed: ${trinoResult.error.message}`
-          );
-        }
-      }
+      await this.executeQuery(swapResult, "swap transformation");
     }
 
     if (setClauses.length === 0) return;
 
     const updateSql = `UPDATE ${fullTableName} SET ${setClauses.join(", ")}`;
     const result = await trino.query(updateSql);
-    for await (const data of result) {
-      const trinoResult = data as { error?: { message: string } };
-      if (trinoResult.error) {
-        throw new Error(
-          `Trino transformation failed: ${trinoResult.error.message}`
-        );
-      }
-    }
+    await this.executeQuery(result, "transformation");
   }
 }
