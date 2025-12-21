@@ -79,6 +79,24 @@ services:
         limits:
           memory: 20G
 
+  trino-fte:
+    image: trinodb/trino:479
+    depends_on:
+      - nessie
+      - create-minio-bucket
+    ports:
+      - "8081:8080"
+    volumes:
+      - ./trino-fte/config.properties:/etc/trino/config.properties:ro
+      - ./trino-fte/jvm.config:/etc/trino/jvm.config:ro
+      - ./trino-fte/exchange-manager.properties:/etc/trino/exchange-manager.properties:ro
+      - ./trino-fte/catalog/iceberg.properties:/etc/trino/catalog/iceberg.properties:ro
+      - trino_exchange:/tmp/trino-exchange
+    deploy:
+      resources:
+        limits:
+          memory: 16G
+
   create-minio-bucket:
     image: minio/mc:RELEASE.2025-08-13T08-35-41Z
     depends_on:
@@ -110,7 +128,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 20G
+          memory: 16G
     ulimits:
       nofile:
         soft: 262144
@@ -123,3 +141,4 @@ volumes:
   pg_replica2_data:
   minio_data:
   clickhouse_data:
+  trino_exchange:

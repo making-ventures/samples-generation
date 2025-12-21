@@ -73,13 +73,17 @@ npx tsx scripts/generate-all.ts --scenario lookup-demo -r 1_000_000_000 --clickh
 
 _ClickHouse:_ Generated in 1h 19m 46s (generation: 25m 31s, transformation: 39m 25s, optimisation: 14m 49s), table size: 41.42 GB
 
-_Trino, 20 Gb Ram:_ Generated in 26m 25s (generation: 4m 54s, transformation: 24m 58s, optimisation: 1m 26s), table size: 17.93 GB
+_Trino, 20 Gb Ram:_ Generated in 32m 57s (generation: 4m 55s, transformation: 26m 36s, optimisation: 1m 25s), table size: 17.94 GB
 
 _Trino, 16 Gb Ram + spill by ha:_ TBD
 
 ### Note
 
-Both Trino and ClickHouse are configured with 20GB memory limits for fair comparison. See `compose/docker-compose.yml` for container resource limits and `compose/trino/` for Trino-specific JVM and query memory settings.
+Two configurations are available:
+- **Standard (20GB):** `trino` - high memory, no spilling
+- **16GB comparison:** `trino-fte` (fault-tolerant execution with disk spilling) and `clickhouse` - both with 16GB limits
+
+See `compose/docker-compose.yml` for container resource limits and `compose/trino/` or `compose/trino-fte/` for Trino-specific settings.
 
 ## Quick Start
 
@@ -94,7 +98,8 @@ Or start individual databases:
 ```bash
 pnpm compose:postgres    # PostgreSQL only
 pnpm compose:clickhouse  # ClickHouse only
-pnpm compose:trino       # Trino with MinIO, Nessie dependencies
+pnpm compose:trino       # Trino 20GB, high memory (port 8080)
+pnpm compose:trino-fte   # Trino 16GB, fault-tolerant execution with spill (port 8081)
 ```
 
 Stop and clean up:
