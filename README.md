@@ -71,9 +71,11 @@ npx tsx scripts/generate-all.ts --scenario lookup-demo -r 1_000_000_000 --clickh
 
 #### 1 billion rows
 
-_ClickHouse:_ TBD
+_ClickHouse:_ Generated in 1h 19m 46s (generation: 25m 31s, transformation: 39m 25s, optimisation: 14m 49s), table size: 41.42 GB
 
-_Trino:_ Generated in 4m 56s (generation: 4m 54s, transformation: 2.23s, optimisation: 204ms), table size: 16.23 GB
+_Trino, 20 Gb Ram:_ Generated in 26m 25s (generation: 4m 54s, transformation: 24m 58s, optimisation: 1m 26s), table size: 17.93 GB
+
+_Trino, 16 Gb Ram + spill by ha:_ TBD
 
 ### Note
 
