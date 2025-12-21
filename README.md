@@ -77,7 +77,7 @@ _Trino:_ Generated in 4m 56s (generation: 4m 54s, transformation: 2.23s, optimis
 
 ### Note
 
-No database tuning was done to equalize resource consumption for fair comparison. For example, Trino is much more aggressive at consuming available resources by default than ClickHouse. This skew may be mitigated by proper configuration.
+Both Trino and ClickHouse are configured with 8GB memory limits for fair comparison. See `compose/docker-compose.yml` for container resource limits and `compose/trino/` for Trino-specific JVM and query memory settings.
 
 ## Quick Start
 
