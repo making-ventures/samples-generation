@@ -53,6 +53,16 @@ _ClickHouse:_ Generated in 41m 48s (generation: 35m 9s, optimisation: 2m 42s, tr
 
 _Trino:_ Generated in 27m 20s (generation: 4m 52s, optimisation: 66ms, transformation: 22m 28s), table size: 33.93 GB
 
+### Lookup transformation (10K departments → employees)
+
+7 columns in employees table, lookup from 10K-row departments table.
+
+#### 1 billion rows
+
+_ClickHouse:_ TBD
+
+_Trino:_ TBD
+
 ### Note
 
 No database tuning was done to equalize resource consumption for fair comparison. For example, Trino is much more aggressive at consuming available resources by default than ClickHouse. This skew may be mitigated by proper configuration.
@@ -514,7 +524,10 @@ interface ScenarioOptions {
 interface ScenarioResult {
   steps: ScenarioStepResult[];
   totalRowsInserted: number;
-  durationMs: number;
+  durationMs: number;       // Total wall-clock time
+  generateMs: number;       // Time spent generating rows
+  transformMs: number;      // Time spent applying transformations
+  optimizeMs: number;       // Time spent on optimisations
 }
 ```
 

@@ -317,6 +317,12 @@ export interface ScenarioResult {
   totalRowsInserted: number;
   /** Total duration of the entire scenario */
   durationMs: number;
+  /** Total duration of data generation across all steps */
+  generateMs: number;
+  /** Total duration of transformations across all steps */
+  transformMs: number;
+  /** Duration of optimization phase (0 if skipped) */
+  optimizeMs: number;
 }
 
 // Main interface that all database implementations must follow

@@ -25,6 +25,7 @@ import {
 //   npx tsx scripts/generate-all.ts --clickhouse --trino
 //   npx tsx scripts/generate-all.ts --scenario english-names
 //   npx tsx scripts/generate-all.ts --scenario english-names --clickhouse -r 1_000
+//   npx tsx scripts/generate-all.ts --scenario lookup-demo --clickhouse -r 1_000
 //   npx tsx scripts/generate-all.ts --help
 
 // Build name arrays from dictionaries
@@ -297,11 +298,11 @@ function getScenarioConfig(scenario: ScenarioName, rowCount: number): Scenario {
         description:
           "Demonstrates LookupTransformation with departments and employees",
         steps: [
-          // Step 1: Create departments lookup table (small, fixed set)
+          // Step 1: Create departments lookup table
           {
             table: {
               name: "departments",
-              description: "Departments lookup table",
+              description: "Departments lookup table (10K rows)",
               columns: [
                 {
                   name: "id",
@@ -311,19 +312,7 @@ function getScenarioConfig(scenario: ScenarioName, rowCount: number): Scenario {
                 {
                   name: "name",
                   type: "string",
-                  generator: {
-                    kind: "choice",
-                    values: [
-                      "Engineering",
-                      "Sales",
-                      "Marketing",
-                      "HR",
-                      "Finance",
-                      "Operations",
-                      "Legal",
-                      "Customer Support",
-                    ],
-                  },
+                  generator: { kind: "randomString", length: 12 },
                 },
                 {
                   name: "budget",
@@ -337,7 +326,7 @@ function getScenarioConfig(scenario: ScenarioName, rowCount: number): Scenario {
                 },
               ],
             },
-            rowCount: 8, // Fixed number of departments
+            rowCount: 10_000,
           },
           // Step 2: Create employees table with department_id
           {
@@ -367,14 +356,9 @@ function getScenarioConfig(scenario: ScenarioName, rowCount: number): Scenario {
                   },
                 },
                 {
-                  name: "email",
-                  type: "string",
-                  generator: { kind: "constant", value: "" },
-                },
-                {
                   name: "department_id",
                   type: "integer",
-                  generator: { kind: "randomInt", min: 1, max: 8 },
+                  generator: { kind: "randomInt", min: 1, max: 10_000 },
                 },
                 {
                   name: "department_name",
@@ -399,19 +383,6 @@ function getScenarioConfig(scenario: ScenarioName, rowCount: number): Scenario {
               ],
             },
             rowCount,
-            transformations: [
-              {
-                description: "Generate email from names",
-                transformations: [
-                  {
-                    kind: "template",
-                    column: "email",
-                    template: "{first_name}.{last_name}@company.com",
-                    lowercase: true,
-                  },
-                ],
-              },
-            ],
           },
           // Step 3: Apply lookup transformation to populate department_name
           {
@@ -507,7 +478,7 @@ async function generateForDatabase(entry: GeneratorEntry): Promise<void> {
     for (const step of result.steps) {
       if (step.generate) {
         console.log(
-          `[${step.tableName}] Generated ${step.generate.rowsInserted.toLocaleString()} rows in ${formatDuration(step.generate.generateMs)} (optimize: ${formatDuration(step.generate.optimizeMs)})`
+          `[${step.tableName}] Generated ${step.generate.rowsInserted.toLocaleString()} rows in ${formatDuration(step.generate.generateMs)}`
         );
       }
       if (step.transform) {
@@ -518,7 +489,7 @@ async function generateForDatabase(entry: GeneratorEntry): Promise<void> {
     }
 
     console.log(
-      `Total: ${result.totalRowsInserted.toLocaleString()} rows in ${formatDuration(result.durationMs)}`
+      `Total: ${result.totalRowsInserted.toLocaleString()} rows in ${formatDuration(result.durationMs)} (generation: ${formatDuration(result.generateMs)}, transformation: ${formatDuration(result.transformMs)}, optimize: ${formatDuration(result.optimizeMs)})`
     );
 
     // Verify row counts for all tables

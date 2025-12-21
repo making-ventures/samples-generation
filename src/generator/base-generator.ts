@@ -183,6 +183,8 @@ export abstract class BaseDataGenerator implements DataGenerator {
 
     const stepResults: ScenarioStepResult[] = [];
     let totalRowsInserted = 0;
+    let totalGenerateMs = 0;
+    let totalTransformMs = 0;
 
     for (const step of scenario.steps) {
       if (isGenerateStep(step)) {
@@ -218,6 +220,10 @@ export abstract class BaseDataGenerator implements DataGenerator {
         });
 
         totalRowsInserted += generateResult.rowsInserted;
+        totalGenerateMs += generateResult.generateMs;
+        if (transformResult) {
+          totalTransformMs += transformResult.durationMs;
+        }
       } else {
         // Transform-only step: just apply transformations to existing table
         const transformResult = await this.transform(
@@ -229,21 +235,29 @@ export abstract class BaseDataGenerator implements DataGenerator {
           tableName: step.tableName,
           transform: transformResult,
         });
+
+        totalTransformMs += transformResult.durationMs;
       }
     }
 
     // Optimize all touched tables once at the end
+    let optimizeMs = 0;
     if (optimize) {
+      const optimizeStart = Date.now();
       const uniqueTables = [...new Set(stepResults.map((s) => s.tableName))];
       for (const tableName of uniqueTables) {
         await this.optimize(tableName);
       }
+      optimizeMs = Date.now() - optimizeStart;
     }
 
     return {
       steps: stepResults,
       totalRowsInserted,
       durationMs: Date.now() - startTime,
+      generateMs: totalGenerateMs,
+      transformMs: totalTransformMs,
+      optimizeMs,
     };
   }
 }
