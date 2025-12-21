@@ -75,7 +75,7 @@ _ClickHouse:_ Generated in 1h 19m 46s (generation: 25m 31s, transformation: 39m 
 
 _Trino, 20 Gb Ram:_ Generated in 32m 57s (generation: 4m 55s, transformation: 26m 36s, optimisation: 1m 25s), table size: 17.94 GB
 
-_Trino, 16 Gb Ram + spill by ha:_ TBD
+_Trino, 16 Gb Ram + spill by fte:_ Generated in 46m 11s (generation: 13m 52s, transformation: 31m 43s, optimisation: 35.11s), table size: 17.94 GB
 
 ### Note
 
