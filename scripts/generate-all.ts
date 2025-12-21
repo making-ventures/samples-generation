@@ -42,7 +42,12 @@ const RUSSIAN_LAST_NAMES = [
   ...getRussianFemaleSurnames(),
 ];
 
-const SCENARIO_NAMES = ["simple", "english-names", "russian-names"] as const;
+const SCENARIO_NAMES = [
+  "simple",
+  "english-names",
+  "russian-names",
+  "lookup-demo",
+] as const;
 type ScenarioName = (typeof SCENARIO_NAMES)[number];
 
 const { values } = parseArgs({
@@ -74,6 +79,7 @@ Scenarios:
   simple         Random strings and values (5 columns)
   english-names  English first/last names with email template (7 columns)
   russian-names  Russian first/last names with email template (7 columns)
+  lookup-demo    Employees with department lookup (demonstrates LookupTransformation)
 
 If no database is specified, all databases are generated.
 
@@ -277,6 +283,152 @@ function getScenarioConfig(scenario: ScenarioName, rowCount: number): Scenario {
                     column: "email",
                     template: "{first_name}.{last_name}@example.com",
                     lowercase: true,
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      };
+
+    case "lookup-demo":
+      return {
+        name: "Lookup transformation demo",
+        description:
+          "Demonstrates LookupTransformation with departments and employees",
+        steps: [
+          // Step 1: Create departments lookup table (small, fixed set)
+          {
+            table: {
+              name: "departments",
+              description: "Departments lookup table",
+              columns: [
+                {
+                  name: "id",
+                  type: "integer",
+                  generator: { kind: "sequence", start: 1 },
+                },
+                {
+                  name: "name",
+                  type: "string",
+                  generator: {
+                    kind: "choice",
+                    values: [
+                      "Engineering",
+                      "Sales",
+                      "Marketing",
+                      "HR",
+                      "Finance",
+                      "Operations",
+                      "Legal",
+                      "Customer Support",
+                    ],
+                  },
+                },
+                {
+                  name: "budget",
+                  type: "float",
+                  generator: {
+                    kind: "randomFloat",
+                    min: 100000,
+                    max: 10000000,
+                    precision: 2,
+                  },
+                },
+              ],
+            },
+            rowCount: 8, // Fixed number of departments
+          },
+          // Step 2: Create employees table with department_id
+          {
+            table: {
+              name: "employees",
+              description: "Employees with department reference",
+              columns: [
+                {
+                  name: "id",
+                  type: "bigint",
+                  generator: { kind: "sequence", start: 1 },
+                },
+                {
+                  name: "first_name",
+                  type: "string",
+                  generator: {
+                    kind: "choiceByLookup",
+                    values: ENGLISH_FIRST_NAMES,
+                  },
+                },
+                {
+                  name: "last_name",
+                  type: "string",
+                  generator: {
+                    kind: "choiceByLookup",
+                    values: ENGLISH_LAST_NAMES,
+                  },
+                },
+                {
+                  name: "email",
+                  type: "string",
+                  generator: { kind: "constant", value: "" },
+                },
+                {
+                  name: "department_id",
+                  type: "integer",
+                  generator: { kind: "randomInt", min: 1, max: 8 },
+                },
+                {
+                  name: "department_name",
+                  type: "string",
+                  generator: { kind: "constant", value: "" },
+                },
+                {
+                  name: "salary",
+                  type: "float",
+                  generator: {
+                    kind: "randomFloat",
+                    min: 30000,
+                    max: 200000,
+                    precision: 2,
+                  },
+                },
+                {
+                  name: "hire_date",
+                  type: "datetime",
+                  generator: { kind: "datetime" },
+                },
+              ],
+            },
+            rowCount,
+            transformations: [
+              {
+                description: "Generate email from names",
+                transformations: [
+                  {
+                    kind: "template",
+                    column: "email",
+                    template: "{first_name}.{last_name}@company.com",
+                    lowercase: true,
+                  },
+                ],
+              },
+            ],
+          },
+          // Step 3: Apply lookup transformation to populate department_name
+          {
+            tableName: "employees",
+            transformations: [
+              {
+                description: "Lookup department name from departments table",
+                transformations: [
+                  {
+                    kind: "lookup",
+                    column: "department_name",
+                    fromTable: "departments",
+                    fromColumn: "name",
+                    joinOn: {
+                      targetColumn: "department_id",
+                      lookupColumn: "id",
+                    },
                   },
                 ],
               },

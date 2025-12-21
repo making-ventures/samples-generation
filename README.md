@@ -27,13 +27,15 @@ Environment: local databases, simple setup, 1 billion rows
 
 5 columns (id, 10-char string, 0 - 1000 float, string choice out of 3 variants, datetime)
 
+#### 1 billion rows
+
 _ClickHouse:_ Generated in 11m 2s (generation: 6m 8s, optimisation: 4m 54s), table size: 23.81 GB
 
 _Trino:_ Generated in 6m 48s (generation: 6m 48s, optimisation: 140ms), table size: 17.41 GB
 
 _PostgreSQL:_ Generated in 54m 26s (generation: 35m 55s, optimisation: 18m 30s), table size: 63.60 GB
 
-Same setup but 10 billion rows:
+#### 10 billion rows
 
 _ClickHouse:_ Generated in 4h 52m 21s (generation: 4h 47m 44s, optimisation: 4m 36s), table size: 248.38 GB
 
@@ -42,6 +44,8 @@ _Trino:_ Generated in 1h 4m 41s (generation: 1h 4m 41s, optimisation: 181ms), ta
 ### Names, then templated email based on generated names
 
 7 columns total.
+
+#### 1 billion rows
 
 English names:
 
