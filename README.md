@@ -363,49 +363,106 @@ With descriptions, you'll see helpful logs:
 
 ### Scenarios
 
-A `Scenario` combines table configuration with transformations, allowing you to define and run complete data generation workflows with a single call:
+A `Scenario` orchestrates multi-step data generation workflows - create lookup tables, generate main tables, and apply cross-table transformations in sequence:
 
 ```typescript
 import { PostgresDataGenerator, type Scenario } from "./src/generator/index.js";
 
-const userScenario: Scenario = {
-  table: {
-    name: "users",
-    columns: [
-      {
-        name: "id",
-        type: "integer",
-        generator: { kind: "sequence", start: 1 },
-      },
-      {
-        name: "first_name",
-        type: "string",
-        generator: { kind: "choiceByLookup", values: ["John", "Jane", "Bob"] },
-      },
-      {
-        name: "last_name",
-        type: "string",
-        generator: {
-          kind: "choiceByLookup",
-          values: ["Smith", "Jones", "Brown"],
-        },
-      },
-      {
-        name: "email",
-        type: "string",
-        generator: { kind: "randomString", length: 20 },
-      },
-    ],
-  },
-  transformations: [
+const scenario: Scenario = {
+  name: "E-commerce data",
+  steps: [
+    // Step 1: Create lookup table
     {
-      description: "Generate email from names",
+      table: {
+        name: "departments",
+        columns: [
+          {
+            name: "id",
+            type: "integer",
+            generator: { kind: "sequence", start: 1 },
+          },
+          {
+            name: "name",
+            type: "string",
+            generator: {
+              kind: "choice",
+              values: ["Engineering", "Sales", "HR"],
+            },
+          },
+        ],
+      },
+      rowCount: 3,
+    },
+    // Step 2: Generate main table with transformations
+    {
+      table: {
+        name: "employees",
+        columns: [
+          {
+            name: "id",
+            type: "bigint",
+            generator: { kind: "sequence", start: 1 },
+          },
+          {
+            name: "first_name",
+            type: "string",
+            generator: {
+              kind: "choice",
+              values: ["John", "Jane", "Bob"],
+            },
+          },
+          {
+            name: "last_name",
+            type: "string",
+            generator: { kind: "choice", values: ["Smith", "Jones"] },
+          },
+          {
+            name: "email",
+            type: "string",
+            generator: { kind: "constant", value: "" },
+          },
+          {
+            name: "department_id",
+            type: "integer",
+            generator: { kind: "randomInt", min: 1, max: 3 },
+          },
+          {
+            name: "department_name",
+            type: "string",
+            generator: { kind: "constant", value: "" },
+          },
+        ],
+      },
+      rowCount: 1000,
       transformations: [
         {
-          kind: "template",
-          column: "email",
-          template: "{first_name}.{last_name}@example.com",
-          lowercase: true,
+          description: "Generate email from names",
+          transformations: [
+            {
+              kind: "template",
+              column: "email",
+              template: "{first_name}.{last_name}@company.com",
+              lowercase: true,
+            },
+          ],
+        },
+      ],
+    },
+    // Step 3: Transform-only step - apply cross-table lookup
+    {
+      tableName: "employees",
+      transformations: [
+        {
+          description: "Lookup department name",
+          transformations: [
+            {
+              kind: "lookup",
+              column: "department_name",
+              fromTable: "departments",
+              fromColumn: "name",
+              joinOn: { targetColumn: "department_id", lookupColumn: "id" },
+            },
+          ],
         },
       ],
     },
@@ -418,38 +475,45 @@ const generator = new PostgresDataGenerator({
 await generator.connect();
 
 const result = await generator.runScenario({
-  scenario: userScenario,
-  rowCount: 10000,
+  scenario,
   dropFirst: true,
 });
 
-console.log(
-  `Generated ${result.generate.rowsInserted} rows in ${result.generate.generateMs}ms`
-);
-if (result.transform) {
-  console.log(
-    `Applied ${result.transform.batchesApplied} transformation batch(es) in ${result.transform.durationMs}ms`
-  );
+for (const step of result.steps) {
+  console.log(`[${step.tableName}] ${step.generate?.rowsInserted ?? 0} rows`);
+  if (step.transform) {
+    console.log(
+      `  Applied ${step.transform.batchesApplied} transformation batch(es)`
+    );
+  }
 }
-console.log(`Total: ${result.durationMs}ms`);
+console.log(
+  `Total: ${result.totalRowsInserted} rows in ${result.durationMs}ms`
+);
 
 await generator.disconnect();
 ```
 
+**Step Types:**
+
+| Step Type            | Fields                                  | Description                                     |
+| -------------------- | --------------------------------------- | ----------------------------------------------- |
+| Generate + Transform | `table`, `rowCount`, `transformations?` | Create table, insert rows, optionally transform |
+| Transform only       | `tableName`, `transformations`          | Apply transformations to existing table         |
+
 ```typescript
 interface ScenarioOptions {
   scenario: Scenario;
-  rowCount: number;
   createTable?: boolean; // Default: true
   dropFirst?: boolean; // Default: false
   truncateFirst?: boolean; // Default: false
   resumeSequences?: boolean; // Default: true
-  optimize?: boolean; // Default: true
+  optimize?: boolean; // Default: true (runs once at end for all tables)
 }
 
 interface ScenarioResult {
-  generate: GenerateResult;
-  transform?: TransformResult;
+  steps: ScenarioStepResult[];
+  totalRowsInserted: number;
   durationMs: number;
 }
 ```
@@ -537,6 +601,12 @@ npx tsx scripts/generate-all.ts
 npx tsx scripts/generate-all.ts --rows 1000
 npx tsx scripts/generate-all.ts -r 1_000_000
 
+# Choose scenario
+npx tsx scripts/generate-all.ts --scenario simple          # Default: 5 columns
+npx tsx scripts/generate-all.ts --scenario english-names   # Names + email template
+npx tsx scripts/generate-all.ts --scenario russian-names   # Russian names + email
+npx tsx scripts/generate-all.ts --scenario lookup-demo     # Departments + employees lookup
+
 # Generate for specific databases only
 npx tsx scripts/generate-all.ts --sqlite
 npx tsx scripts/generate-all.ts --postgres
@@ -544,7 +614,7 @@ npx tsx scripts/generate-all.ts --clickhouse
 npx tsx scripts/generate-all.ts --trino
 
 # Combine options
-npx tsx scripts/generate-all.ts -r 10000 --postgres --clickhouse
+npx tsx scripts/generate-all.ts -r 10000 --scenario english-names --postgres --clickhouse
 
 # Show help
 npx tsx scripts/generate-all.ts --help
