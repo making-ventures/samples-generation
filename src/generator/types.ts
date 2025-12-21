@@ -198,6 +198,12 @@ export interface CommonGenerateOptions {
    * (VACUUM, OPTIMIZE TABLE, etc.). Default: true.
    */
   optimize?: boolean;
+  /**
+   * Number of rows to generate per batch. If set, rows are inserted
+   * in batches of this size. Useful for large datasets to avoid
+   * memory issues and timeouts. Default: no batching (all at once).
+   */
+  batchSize?: number;
 }
 
 export interface GenerateOptions extends CommonGenerateOptions {
@@ -215,6 +221,8 @@ export interface GenerateResult {
   generateMs: number;
   /** Duration of optimization (0 if skipped) */
   optimizeMs: number;
+  /** Number of batches used (1 if no batching) */
+  batchCount: number;
 }
 
 export interface TransformResult {

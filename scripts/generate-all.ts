@@ -54,6 +54,7 @@ type ScenarioName = (typeof SCENARIO_NAMES)[number];
 const { values } = parseArgs({
   options: {
     rows: { type: "string", short: "r", default: "1000" },
+    batch: { type: "string", short: "b" },
     scenario: { type: "string", short: "s", default: "simple" },
     sqlite: { type: "boolean", default: false },
     postgres: { type: "boolean", default: false },
@@ -69,6 +70,7 @@ Usage: npx tsx scripts/generate-all.ts [options]
 
 Options:
   -r, --rows <count>     Number of rows to generate (default: 1000, supports 1_000_000 format)
+  -b, --batch <size>     Batch size for generation (e.g., 100_000_000 for 100M per batch)
   -s, --scenario <name>  Scenario to run: ${SCENARIO_NAMES.join(", ")} (default: simple)
   --sqlite               Generate for SQLite only
   --postgres             Generate for PostgreSQL only
@@ -89,11 +91,15 @@ Examples:
   npx tsx scripts/generate-all.ts -r 10000 --postgres
   npx tsx scripts/generate-all.ts --scenario english-names --clickhouse
   npx tsx scripts/generate-all.ts -s russian-names --trino
+  npx tsx scripts/generate-all.ts -r 1_000_000_000 -b 100_000_000 --trino
 `);
   process.exit(0);
 }
 
 const ROW_COUNT = parseInt(values.rows.replace(/_/g, ""), 10);
+const BATCH_SIZE = values.batch
+  ? parseInt(values.batch.replace(/_/g, ""), 10)
+  : undefined;
 const SCENARIO = values.scenario as ScenarioName;
 
 if (!SCENARIO_NAMES.includes(SCENARIO)) {
@@ -472,6 +478,7 @@ async function generateForDatabase(entry: GeneratorEntry): Promise<void> {
     const result = await generator.runScenario({
       scenario: scenarioConfig,
       dropFirst: true,
+      batchSize: BATCH_SIZE,
     });
 
     // Log results for each step

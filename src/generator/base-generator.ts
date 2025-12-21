@@ -87,14 +87,29 @@ export abstract class BaseDataGenerator implements DataGenerator {
       truncateFirst = false,
       resumeSequences = true,
       optimize = true,
+      batchSize: requestedBatchSize,
     } = options;
     const startTime = Date.now();
+
+    // Always use batching internally - default to full rowCount if not specified
+    const effectiveBatchSize =
+      requestedBatchSize &&
+      requestedBatchSize > 0 &&
+      requestedBatchSize < rowCount
+        ? requestedBatchSize
+        : rowCount;
+    const batchCount = Math.ceil(rowCount / effectiveBatchSize);
+    const showBatchProgress = batchCount > 1;
 
     const tableLabel = table.description
       ? `${table.name} (${table.description})`
       : table.name;
+
     console.log(
-      `[${this.name}] Generating: ${tableLabel} - ${rowCount.toLocaleString()} rows`
+      `[${this.name}] Generating: ${tableLabel} - ${rowCount.toLocaleString()} rows` +
+        (showBatchProgress
+          ? ` (${String(batchCount)} batches of ${effectiveBatchSize.toLocaleString()})`
+          : "")
     );
 
     if (dropFirst) {
@@ -123,7 +138,27 @@ export abstract class BaseDataGenerator implements DataGenerator {
       }
     }
 
-    await this.generateNative(table, rowCount, startSequence);
+    // Generate in batches (single batch if batchSize not specified)
+    let remaining = rowCount;
+    let currentSequence = startSequence;
+    let batchNum = 0;
+
+    while (remaining > 0) {
+      batchNum++;
+      const currentBatchSize = Math.min(effectiveBatchSize, remaining);
+
+      if (showBatchProgress) {
+        console.log(
+          `[${this.name}] Batch ${String(batchNum)}/${String(batchCount)}: ${currentBatchSize.toLocaleString()} rows (seq: ${currentSequence.toLocaleString()})`
+        );
+      }
+
+      await this.generateNative(table, currentBatchSize, currentSequence);
+
+      remaining -= currentBatchSize;
+      currentSequence += currentBatchSize;
+    }
+
     const generateMs = Date.now() - startTime;
 
     let optimizeMs = 0;
@@ -138,6 +173,7 @@ export abstract class BaseDataGenerator implements DataGenerator {
       durationMs: Date.now() - startTime,
       generateMs,
       optimizeMs,
+      batchCount,
     };
   }
 
@@ -175,6 +211,7 @@ export abstract class BaseDataGenerator implements DataGenerator {
       truncateFirst = false,
       resumeSequences = true,
       optimize = true,
+      batchSize,
     } = options;
 
     if (scenario.name) {
@@ -202,6 +239,7 @@ export abstract class BaseDataGenerator implements DataGenerator {
           truncateFirst,
           resumeSequences,
           optimize: false,
+          batchSize,
         });
 
         // Apply transformations if defined

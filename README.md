@@ -80,6 +80,7 @@ _Trino, 16 Gb Ram + spill by fte:_ Generated in 46m 11s (generation: 13m 52s, tr
 ### Note
 
 Two configurations are available:
+
 - **Standard (20GB):** `trino` - high memory, no spilling
 - **16GB comparison:** `trino-fte` (fault-tolerant execution with disk spilling) and `clickhouse` - both with 16GB limits
 
@@ -90,11 +91,13 @@ See `compose/docker-compose.yml` for container resource limits and `compose/trin
 ### Starting Databases
 
 Start all databases:
+
 ```bash
 pnpm compose:up
 ```
 
 Or start individual databases:
+
 ```bash
 pnpm compose:postgres    # PostgreSQL only
 pnpm compose:clickhouse  # ClickHouse only
@@ -105,6 +108,7 @@ pnpm compose:trino-fte   # Trino 16GB, fault-tolerant execution with spill
 > **Note:** `trino` and `trino-fte` share port 8080 - stop one before starting the other.
 
 Stop and clean up:
+
 ```bash
 pnpm compose:down   # Stop containers
 pnpm compose:reset  # Stop and remove volumes
@@ -159,6 +163,7 @@ const result = await generator.generate({
   rowCount: 1000,
   truncateFirst: true,
   resumeSequences: true, // Continue sequence from last max value
+  batchSize: 100_000_000, // Optional: insert in batches (useful for large datasets)
 });
 console.log(
   `Inserted ${result.rowsInserted} rows in ${result.generateMs}ms (optimize: ${result.optimizeMs}ms)`
@@ -620,12 +625,12 @@ formatBytes(1048576); // "1.00 MB"
 
 By default, `generate()` runs database-specific optimization after inserting rows:
 
-| Database   | Optimization                                                            |
-| ---------- | ----------------------------------------------------------------------- |
-| PostgreSQL | `VACUUM ANALYZE` - reclaims storage and updates statistics              |
-| ClickHouse | `OPTIMIZE TABLE FINAL` - merges all parts for MergeTree engines         |
-| SQLite     | `VACUUM` + `ANALYZE` - rebuilds file and gathers statistics             |
-| Trino      | `optimize` + `expire_snapshots` + `remove_orphan_files` - Iceberg       |
+| Database   | Optimization                                                      |
+| ---------- | ----------------------------------------------------------------- |
+| PostgreSQL | `VACUUM ANALYZE` - reclaims storage and updates statistics        |
+| ClickHouse | `OPTIMIZE TABLE FINAL` - merges all parts for MergeTree engines   |
+| SQLite     | `VACUUM` + `ANALYZE` - rebuilds file and gathers statistics       |
+| Trino      | `optimize` + `expire_snapshots` + `remove_orphan_files` - Iceberg |
 
 Disable for quick tests:
 
@@ -654,6 +659,10 @@ npx tsx scripts/generate-all.ts
 # Specify row count
 npx tsx scripts/generate-all.ts --rows 1000
 npx tsx scripts/generate-all.ts -r 1_000_000
+
+# Use batching for large datasets (helps with memory and timeouts)
+npx tsx scripts/generate-all.ts -r 1_000_000_000 -b 100_000_000  # 10 batches of 100M
+npx tsx scripts/generate-all.ts -r 1_000_000_000 --batch 50_000_000  # 20 batches of 50M
 
 # Choose scenario
 npx tsx scripts/generate-all.ts --scenario simple          # Default: 5 columns
