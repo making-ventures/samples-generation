@@ -98,9 +98,11 @@ Or start individual databases:
 ```bash
 pnpm compose:postgres    # PostgreSQL only
 pnpm compose:clickhouse  # ClickHouse only
-pnpm compose:trino       # Trino 20GB, high memory (port 8080)
-pnpm compose:trino-fte   # Trino 16GB, fault-tolerant execution with spill (port 8081)
+pnpm compose:trino       # Trino 20GB, high memory
+pnpm compose:trino-fte   # Trino 16GB, fault-tolerant execution with spill
 ```
+
+> **Note:** `trino` and `trino-fte` share port 8080 - stop one before starting the other.
 
 Stop and clean up:
 ```bash
