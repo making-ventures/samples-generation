@@ -390,22 +390,25 @@ export class TrinoDataGenerator extends BaseDataGenerator {
     const fullTableName = `${this.fullSchemaPath}.${escapeTrinoIdentifier(tableName)}`;
 
     // Compact small files into larger ones for better read performance
+    // Uses Trino's optimize procedure (file_size_threshold in bytes as string)
     const rewriteQuery = await trino.query(
-      `ALTER TABLE ${fullTableName} EXECUTE rewrite_data_files(min_file_size_bytes => 10485760)`
+      `ALTER TABLE ${fullTableName} EXECUTE optimize(file_size_threshold => '10MB')`
     );
-    await this.executeQuery(rewriteQuery, "optimize (rewrite_data_files)");
+    await this.executeQuery(rewriteQuery, "optimize");
 
-    // Remove old snapshots older than 1 day to reclaim storage
+    // Remove old snapshots to reclaim storage
+    // Minimum retention is 7d by default (iceberg.expire-snapshots.min-retention)
     const expireQuery = await trino.query(
-      `ALTER TABLE ${fullTableName} EXECUTE expire_snapshots(retention_threshold => '1d')`
+      `ALTER TABLE ${fullTableName} EXECUTE expire_snapshots(retention_threshold => '7d')`
     );
-    await this.executeQuery(expireQuery, "optimize (expire_snapshots)");
+    await this.executeQuery(expireQuery, "expire_snapshots");
 
     // Remove orphan files not referenced by any snapshot
+    // Minimum retention is 7d by default (iceberg.remove-orphan-files.min-retention)
     const orphanQuery = await trino.query(
-      `ALTER TABLE ${fullTableName} EXECUTE remove_orphan_files(retention_threshold => '1d')`
+      `ALTER TABLE ${fullTableName} EXECUTE remove_orphan_files(retention_threshold => '7d')`
     );
-    await this.executeQuery(orphanQuery, "optimize (remove_orphan_files)");
+    await this.executeQuery(orphanQuery, "remove_orphan_files");
   }
 
   protected async applyTransformations(

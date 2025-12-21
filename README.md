@@ -591,12 +591,12 @@ formatBytes(1048576); // "1.00 MB"
 
 By default, `generate()` runs database-specific optimization after inserting rows:
 
-| Database   | Optimization                                                                |
-| ---------- | --------------------------------------------------------------------------- |
-| PostgreSQL | `VACUUM ANALYZE` - reclaims storage and updates statistics                  |
-| ClickHouse | `OPTIMIZE TABLE FINAL` - merges all parts for MergeTree engines             |
-| SQLite     | `VACUUM` + `ANALYZE` - rebuilds file and gathers statistics                 |
-| Trino      | `rewrite_data_files` + `expire_snapshots` + `remove_orphan_files` - Iceberg |
+| Database   | Optimization                                                            |
+| ---------- | ----------------------------------------------------------------------- |
+| PostgreSQL | `VACUUM ANALYZE` - reclaims storage and updates statistics              |
+| ClickHouse | `OPTIMIZE TABLE FINAL` - merges all parts for MergeTree engines         |
+| SQLite     | `VACUUM` + `ANALYZE` - rebuilds file and gathers statistics             |
+| Trino      | `optimize` + `expire_snapshots` + `remove_orphan_files` - Iceberg       |
 
 Disable for quick tests:
 
