@@ -19,13 +19,17 @@ We often need to prefill tables during tests, checks, and measurements. These ge
 pnpm install
 ```
 
-## Measurements of simple generations
+## Measurements of generations
 
 Environment: local databases, simple setup, 1 billion rows
 
 ### Trivial generation
 
 5 columns (id, 10-char string, 0 - 1000 float, string choice out of 3 variants, datetime)
+
+```bash
+npx tsx scripts/generate-all.ts --scenario simple -r 1_000_000_000 --clickhouse --trino
+```
 
 #### 1 billion rows
 
@@ -45,6 +49,10 @@ _Trino:_ Generated in 1h 4m 41s (generation: 1h 4m 41s, optimisation: 181ms), ta
 
 7 columns total.
 
+```bash
+npx tsx scripts/generate-all.ts --scenario english-names -r 1_000_000_000 --clickhouse --trino
+```
+
 #### 1 billion rows
 
 English names:
@@ -56,6 +64,10 @@ _Trino:_ Generated in 27m 20s (generation: 4m 52s, transformation: 22m 28s, opti
 ### Lookup transformation (10K departments → employees)
 
 7 columns in employees table, lookup from 10K-row departments table.
+
+```bash
+npx tsx scripts/generate-all.ts --scenario lookup-demo -r 1_000_000_000 --clickhouse --trino
+```
 
 #### 1 billion rows
 
