@@ -13,6 +13,7 @@ import type {
   ScenarioStep,
   ScenarioGenerateStep,
 } from "./types.js";
+import { formatDuration } from "./utils.js";
 import { formatBytes } from "./utils.js";
 
 /** Type guard for generate steps */
@@ -142,18 +143,31 @@ export abstract class BaseDataGenerator implements DataGenerator {
     let remaining = rowCount;
     let currentSequence = startSequence;
     let batchNum = 0;
+    const batchTimes: number[] = [];
 
     while (remaining > 0) {
       batchNum++;
       const currentBatchSize = Math.min(effectiveBatchSize, remaining);
+      const batchStart = Date.now();
 
       if (showBatchProgress) {
+        // Calculate ETA based on average batch time (skip first batch)
+        let etaStr = "";
+        if (batchTimes.length > 0) {
+          const avgBatchMs =
+            batchTimes.reduce((a, b) => a + b, 0) / batchTimes.length;
+          const remainingBatches = batchCount - batchNum + 1;
+          const etaMs = avgBatchMs * remainingBatches;
+          etaStr = ` - ETA: ${formatDuration(etaMs)}`;
+        }
         console.log(
-          `[${this.name}] Batch ${String(batchNum)}/${String(batchCount)}: ${currentBatchSize.toLocaleString()} rows (seq: ${currentSequence.toLocaleString()})`
+          `[${this.name}] Batch ${String(batchNum)}/${String(batchCount)}: ${currentBatchSize.toLocaleString()} rows${etaStr}`
         );
       }
 
       await this.generateNative(table, currentBatchSize, currentSequence);
+
+      batchTimes.push(Date.now() - batchStart);
 
       remaining -= currentBatchSize;
       currentSequence += currentBatchSize;
