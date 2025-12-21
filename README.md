@@ -63,7 +63,7 @@ _Trino:_ Generated in 27m 20s (generation: 4m 52s, transformation: 22m 28s, opti
 
 ### Lookup transformation (10K departments → employees)
 
-7 columns in employees table, lookup from 10K-row departments table.
+7 columns in employees table, lookup from department name in 10K-row departments table.
 
 ```bash
 npx tsx scripts/generate-all.ts --scenario lookup-demo -r 1_000_000_000 --clickhouse --trino
@@ -536,10 +536,10 @@ interface ScenarioOptions {
 interface ScenarioResult {
   steps: ScenarioStepResult[];
   totalRowsInserted: number;
-  durationMs: number;       // Total wall-clock time
-  generateMs: number;       // Time spent generating rows
-  transformMs: number;      // Time spent applying transformations
-  optimizeMs: number;       // Time spent on optimisations
+  durationMs: number; // Total wall-clock time
+  generateMs: number; // Time spent generating rows
+  transformMs: number; // Time spent applying transformations
+  optimizeMs: number; // Time spent on optimisations
 }
 ```
 

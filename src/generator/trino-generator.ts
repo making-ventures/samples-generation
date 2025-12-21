@@ -516,8 +516,13 @@ export class TrinoDataGenerator extends BaseDataGenerator {
         WHERE random() < ${prob}
       `;
       const swapResult = await trino.query(swapSql);
-      for await (const _ of swapResult) {
-        // consume result
+      for await (const result of swapResult) {
+        const trinoResult = result as { error?: { message: string } };
+        if (trinoResult.error) {
+          throw new Error(
+            `Trino swap transformation failed: ${trinoResult.error.message}`
+          );
+        }
       }
     }
 
@@ -525,8 +530,13 @@ export class TrinoDataGenerator extends BaseDataGenerator {
 
     const updateSql = `UPDATE ${fullTableName} SET ${setClauses.join(", ")}`;
     const result = await trino.query(updateSql);
-    for await (const _ of result) {
-      // consume result
+    for await (const data of result) {
+      const trinoResult = data as { error?: { message: string } };
+      if (trinoResult.error) {
+        throw new Error(
+          `Trino transformation failed: ${trinoResult.error.message}`
+        );
+      }
     }
   }
 }
