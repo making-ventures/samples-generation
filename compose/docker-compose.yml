@@ -67,7 +67,7 @@ services:
     image: trinodb/trino:479
     depends_on:
       - nessie
-      - minio
+      - create-minio-bucket
     ports:
       - "8080:8080"
     volumes:

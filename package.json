@@ -50,6 +50,9 @@
     "release": "release-it",
     "release:dry": "release-it --dry-run",
     "compose:up": "docker compose -f compose/docker-compose.yml --profile single up starter",
+    "compose:postgres": "docker compose -f compose/docker-compose.yml up -d postgres",
+    "compose:clickhouse": "docker compose -f compose/docker-compose.yml up -d clickhouse",
+    "compose:trino": "docker compose -f compose/docker-compose.yml up -d trino",
     "compose:down": "docker compose -f compose/docker-compose.yml down",
     "compose:restart": "docker compose -f compose/docker-compose.yml restart",
     "compose:reset": "docker compose -f compose/docker-compose.yml down --volumes --remove-orphans"

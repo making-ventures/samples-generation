@@ -79,9 +79,29 @@ _Trino, 16 Gb Ram + spill by ha:_ TBD
 
 ### Note
 
-Both Trino and ClickHouse are configured with 8GB memory limits for fair comparison. See `compose/docker-compose.yml` for container resource limits and `compose/trino/` for Trino-specific JVM and query memory settings.
+Both Trino and ClickHouse are configured with 20GB memory limits for fair comparison. See `compose/docker-compose.yml` for container resource limits and `compose/trino/` for Trino-specific JVM and query memory settings.
 
 ## Quick Start
+
+### Starting Databases
+
+Start all databases:
+```bash
+pnpm compose:up
+```
+
+Or start individual databases:
+```bash
+pnpm compose:postgres    # PostgreSQL only
+pnpm compose:clickhouse  # ClickHouse only
+pnpm compose:trino       # Trino with MinIO, Nessie dependencies
+```
+
+Stop and clean up:
+```bash
+pnpm compose:down   # Stop containers
+pnpm compose:reset  # Stop and remove volumes
+```
 
 ### Using the Generator API
 
