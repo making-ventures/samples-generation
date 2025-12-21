@@ -492,13 +492,18 @@ async function generateForDatabase(entry: GeneratorEntry): Promise<void> {
       `Total: ${result.totalRowsInserted.toLocaleString()} rows in ${formatDuration(result.durationMs)} (generation: ${formatDuration(result.generateMs)}, transformation: ${formatDuration(result.transformMs)}, optimize: ${formatDuration(result.optimizeMs)})`
     );
 
-    // Verify row counts for all tables
-    for (const step of result.steps) {
-      const count = await generator.countRows(step.tableName);
-      const size = await generator.getTableSizeForHuman(step.tableName);
+    // Verify row counts and show sample for each unique table
+    const uniqueTables = [...new Set(result.steps.map((s) => s.tableName))];
+    for (const tableName of uniqueTables) {
+      const count = await generator.countRows(tableName);
+      const size = await generator.getTableSizeForHuman(tableName);
       console.log(
-        `[${step.tableName}] Verified: ${count.toLocaleString()} rows${size ? `, ${size}` : ""}`
+        `[${tableName}] Verified: ${count.toLocaleString()} rows${size ? `, ${size}` : ""}`
       );
+      const rows = await generator.queryRows(tableName, 1);
+      if (rows.length > 0) {
+        console.log(`[${tableName}] Sample:`, rows[0]);
+      }
     }
 
     console.log(`Disconnected from ${name}`);

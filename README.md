@@ -49,9 +49,9 @@ _Trino:_ Generated in 1h 4m 41s (generation: 1h 4m 41s, optimisation: 181ms), ta
 
 English names:
 
-_ClickHouse:_ Generated in 41m 48s (generation: 35m 9s, optimisation: 2m 42s, transformation: 3m 55s), table size: 44.97 GB
+_ClickHouse:_ Generated in 41m 48s (generation: 35m 9s, transformation: 3m 55s, optimisation: 2m 42s), table size: 44.97 GB
 
-_Trino:_ Generated in 27m 20s (generation: 4m 52s, optimisation: 66ms, transformation: 22m 28s), table size: 33.93 GB
+_Trino:_ Generated in 27m 20s (generation: 4m 52s, transformation: 22m 28s, optimisation: 66ms), table size: 33.93 GB
 
 ### Lookup transformation (10K departments → employees)
 
@@ -61,7 +61,7 @@ _Trino:_ Generated in 27m 20s (generation: 4m 52s, optimisation: 66ms, transform
 
 _ClickHouse:_ TBD
 
-_Trino:_ TBD
+_Trino:_ Generated in 4m 56s (generation: 4m 54s, transformation: 2.23s, optimisation: 204ms), table size: 16.23 GB
 
 ### Note
 
