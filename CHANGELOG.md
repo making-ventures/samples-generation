@@ -4,32 +4,32 @@
 
 ### Features
 
-* add batch size option for large dataset generation ([dbb9091](https://github.com/making-ventures/samples-generation/commit/dbb9091d4872a58a4bb83596a6bf496f69f7439a))
-* add ETA display for batch progress ([d2641e8](https://github.com/making-ventures/samples-generation/commit/d2641e8f6fc3d141a82b3486c9fb8b3aaede88ee))
-* add individual database compose commands ([df1acec](https://github.com/making-ventures/samples-generation/commit/df1acec8fd7d83e5ba988ee397e9bfda0b17e804))
-* add lookup-demo scenario demonstrating LookupTransformation ([7d58c01](https://github.com/making-ventures/samples-generation/commit/7d58c01ee192271cf0737a64eb83d07bf9b81b1e))
-* add lookup-demo scenario with ScenarioResult timing breakdown ([272f66f](https://github.com/making-ventures/samples-generation/commit/272f66f369a9ca1329a10159c99cd4069d53bd2a))
-* add trino-fte configuration (16GB + fault-tolerant execution) ([6d01100](https://github.com/making-ventures/samples-generation/commit/6d01100836a50619876eb4f95abfdc8c7eb688a5))
-* show sample row from each table in generate-all script ([52e3e4e](https://github.com/making-ventures/samples-generation/commit/52e3e4e3062485ae30c8ea294b642bc3ebe3c90a))
-* use S3-based exchange manager for trino-fte ([af5ecf1](https://github.com/making-ventures/samples-generation/commit/af5ecf1480c2ab3b8700df965720e7a87f51645f))
+- add batch size option for large dataset generation ([dbb9091](https://github.com/making-ventures/samples-generation/commit/dbb9091d4872a58a4bb83596a6bf496f69f7439a))
+- add ETA display for batch progress ([d2641e8](https://github.com/making-ventures/samples-generation/commit/d2641e8f6fc3d141a82b3486c9fb8b3aaede88ee))
+- add individual database compose commands ([df1acec](https://github.com/making-ventures/samples-generation/commit/df1acec8fd7d83e5ba988ee397e9bfda0b17e804))
+- add lookup-demo scenario demonstrating LookupTransformation ([7d58c01](https://github.com/making-ventures/samples-generation/commit/7d58c01ee192271cf0737a64eb83d07bf9b81b1e))
+- add lookup-demo scenario with ScenarioResult timing breakdown ([272f66f](https://github.com/making-ventures/samples-generation/commit/272f66f369a9ca1329a10159c99cd4069d53bd2a))
+- add trino-fte configuration (16GB + fault-tolerant execution) ([6d01100](https://github.com/making-ventures/samples-generation/commit/6d01100836a50619876eb4f95abfdc8c7eb688a5))
+- show sample row from each table in generate-all script ([52e3e4e](https://github.com/making-ventures/samples-generation/commit/52e3e4e3062485ae30c8ea294b642bc3ebe3c90a))
+- use S3-based exchange manager for trino-fte ([af5ecf1](https://github.com/making-ventures/samples-generation/commit/af5ecf1480c2ab3b8700df965720e7a87f51645f))
 
 ### Bug Fixes
 
-* adjust Trino memory config to fit within 8GB container ([91fd26e](https://github.com/making-ventures/samples-generation/commit/91fd26e622f6a3736a562a01489cdbd664c558aa))
-* properly catch and display Trino transformation errors ([d9477d4](https://github.com/making-ventures/samples-generation/commit/d9477d45f059375b3d2cf6578dcb3339d00aba2f))
-* use correct Trino optimize procedure names ([301d372](https://github.com/making-ventures/samples-generation/commit/301d372f9504b0a2f1eb94864e92f0a8895e4e5f))
+- adjust Trino memory config to fit within 8GB container ([91fd26e](https://github.com/making-ventures/samples-generation/commit/91fd26e622f6a3736a562a01489cdbd664c558aa))
+- properly catch and display Trino transformation errors ([d9477d4](https://github.com/making-ventures/samples-generation/commit/d9477d45f059375b3d2cf6578dcb3339d00aba2f))
+- use correct Trino optimize procedure names ([301d372](https://github.com/making-ventures/samples-generation/commit/301d372f9504b0a2f1eb94864e92f0a8895e4e5f))
 
 ### Refactoring
 
-* extract executeQuery helper for Trino error handling ([c300cb8](https://github.com/making-ventures/samples-generation/commit/c300cb88f5f57fee17a3d3fa42f700c3c9f58764))
+- extract executeQuery helper for Trino error handling ([c300cb8](https://github.com/making-ventures/samples-generation/commit/c300cb88f5f57fee17a3d3fa42f700c3c9f58764))
 
 ### Documentation
 
-* add reproduction commands to measurements section ([1bf9ff2](https://github.com/making-ventures/samples-generation/commit/1bf9ff28f133899c63c1ae2bc1a855cfa106668a))
-* add Trino FTE 16GB benchmark results ([7920e3e](https://github.com/making-ventures/samples-generation/commit/7920e3e58f1faca6ced18d974e248dcf60806f6c))
-* update benchmark results for Trino 16GB FTE with batching ([cab530b](https://github.com/making-ventures/samples-generation/commit/cab530b8ba2082ac18c60d12e5a0c7f62d3fbcd6))
-* update note about equalized resource configuration ([3dafa24](https://github.com/making-ventures/samples-generation/commit/3dafa247c7a548ee3bf91a221650f1d8c8d81bb8))
-* update README with multi-step scenarios and script options ([c46ef5a](https://github.com/making-ventures/samples-generation/commit/c46ef5acd405bc130d166da2e3c1b349bb86c2f9))
+- add reproduction commands to measurements section ([1bf9ff2](https://github.com/making-ventures/samples-generation/commit/1bf9ff28f133899c63c1ae2bc1a855cfa106668a))
+- add Trino FTE 16GB benchmark results ([7920e3e](https://github.com/making-ventures/samples-generation/commit/7920e3e58f1faca6ced18d974e248dcf60806f6c))
+- update benchmark results for Trino 16GB FTE with batching ([cab530b](https://github.com/making-ventures/samples-generation/commit/cab530b8ba2082ac18c60d12e5a0c7f62d3fbcd6))
+- update note about equalized resource configuration ([3dafa24](https://github.com/making-ventures/samples-generation/commit/3dafa247c7a548ee3bf91a221650f1d8c8d81bb8))
+- update README with multi-step scenarios and script options ([c46ef5a](https://github.com/making-ventures/samples-generation/commit/c46ef5acd405bc130d166da2e3c1b349bb86c2f9))
 
 ## 0.2.0 (2025-12-21)
 

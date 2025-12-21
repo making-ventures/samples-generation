@@ -151,17 +151,18 @@ export abstract class BaseDataGenerator implements DataGenerator {
       const batchStart = Date.now();
 
       if (showBatchProgress) {
-        // Calculate ETA based on average batch time (skip first batch)
-        let etaStr = "";
+        // Build progress info: last batch time + ETA (skip for first batch)
+        let progressInfo = "";
         if (batchTimes.length > 0) {
+          const lastBatchMs = batchTimes[batchTimes.length - 1];
           const avgBatchMs =
             batchTimes.reduce((a, b) => a + b, 0) / batchTimes.length;
           const remainingBatches = batchCount - batchNum + 1;
           const etaMs = avgBatchMs * remainingBatches;
-          etaStr = ` - ETA: ${formatDuration(etaMs)}`;
+          progressInfo = ` (last: ${formatDuration(lastBatchMs ?? 0)}, ETA: ${formatDuration(etaMs)})`;
         }
         console.log(
-          `[${this.name}] Batch ${String(batchNum)}/${String(batchCount)}: ${currentBatchSize.toLocaleString()} rows${etaStr}`
+          `[${this.name}] Batch ${String(batchNum)}/${String(batchCount)}: ${currentBatchSize.toLocaleString()} rows${progressInfo}`
         );
       }
 

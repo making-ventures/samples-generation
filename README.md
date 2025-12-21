@@ -21,7 +21,7 @@ pnpm install
 
 ## Measurements of generations
 
-Environment: local databases, simple setup, 1 billion rows
+Environment: local databases, simple setup, 1 billion rows, batches by 100 millions.
 
 ### Trivial generation
 
@@ -57,7 +57,7 @@ npx tsx scripts/generate-all.ts --scenario english-names -r 1_000_000_000 --clic
 
 English names:
 
-_ClickHouse:_ Generated in 41m 48s (generation: 35m 9s, transformation: 3m 55s, optimisation: 2m 42s), table size: 44.97 GB
+_ClickHouse, 16 Gb Ram:_ Generated in 18m 17s (generation: 7m 25s, transformation: 2m 2s, optimisation: 8m 49s), table size: 44.96 GB
 
 _Trino, 16 Gb Ram + spill by fte:_ Generated in 24m 51s (generation: 7m 47s, transformation: 16m 40s, optimisation: 24.34s), table size: 20.51 GB
 
