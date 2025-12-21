@@ -74,6 +74,10 @@ services:
       - ./trino/config.properties:/etc/trino/config.properties:ro
       - ./trino/jvm.config:/etc/trino/jvm.config:ro
       - ./trino/catalog/iceberg.properties:/etc/trino/catalog/iceberg.properties:ro
+    deploy:
+      resources:
+        limits:
+          memory: 8G
 
   create-minio-bucket:
     image: minio/mc:RELEASE.2025-08-13T08-35-41Z
@@ -103,6 +107,10 @@ services:
       - "9009:9000"
     volumes:
       - clickhouse_data:/var/lib/clickhouse
+    deploy:
+      resources:
+        limits:
+          memory: 8G
     ulimits:
       nofile:
         soft: 262144
