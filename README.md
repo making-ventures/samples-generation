@@ -35,7 +35,7 @@ npx tsx scripts/generate-all.ts --scenario simple -r 1_000_000_000 --clickhouse 
 
 _ClickHouse:_ Generated in 11m 2s (generation: 6m 8s, optimisation: 4m 54s), table size: 23.81 GB
 
-_Trino:_ Generated in 6m 48s (generation: 6m 48s, optimisation: 140ms), table size: 17.41 GB
+_Trino, 16 Gb Ram + spill by fte:_ Generated in 8m 40s (generation: 6m 48s, optimisation: 291ms), table size: 15.70 GB
 
 _PostgreSQL:_ Generated in 54m 26s (generation: 35m 55s, optimisation: 18m 30s), table size: 63.60 GB
 
@@ -59,7 +59,7 @@ English names:
 
 _ClickHouse:_ Generated in 41m 48s (generation: 35m 9s, transformation: 3m 55s, optimisation: 2m 42s), table size: 44.97 GB
 
-_Trino:_ Generated in 27m 20s (generation: 4m 52s, transformation: 22m 28s, optimisation: 66ms), table size: 33.93 GB
+_Trino, 16 Gb Ram + spill by fte:_ Generated in 24m 51s (generation: 7m 47s, transformation: 16m 40s, optimisation: 24.34s), table size: 20.51 GB
 
 ### Lookup transformation (10K departments → employees)
 
