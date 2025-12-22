@@ -4,15 +4,15 @@
 
 ### Bug Fixes
 
-* escape apostrophes in choice generator for all databases ([90cb1f2](https://github.com/making-ventures/samples-generation/commit/90cb1f2f3d1ab76fadaf150df0fc739650c44c5d))
+- escape apostrophes in choice generator for all databases ([90cb1f2](https://github.com/making-ventures/samples-generation/commit/90cb1f2f3d1ab76fadaf150df0fc739650c44c5d))
 
 ### Refactoring
 
-* centralize SQL literal escaping functions ([15f0af6](https://github.com/making-ventures/samples-generation/commit/15f0af6855c46c746ea5067818117e9cf08abd76))
+- centralize SQL literal escaping functions ([15f0af6](https://github.com/making-ventures/samples-generation/commit/15f0af6855c46c746ea5067818117e9cf08abd76))
 
 ### Documentation
 
-* add literal escape functions to exports and README ([ac4b3e7](https://github.com/making-ventures/samples-generation/commit/ac4b3e71df3306bb87a4e2caae1af33bef004ee0))
+- add literal escape functions to exports and README ([ac4b3e7](https://github.com/making-ventures/samples-generation/commit/ac4b3e71df3306bb87a4e2caae1af33bef004ee0))
 
 ## [0.4.0](https://github.com/making-ventures/samples-generation/compare/v0.3.0...v0.4.0) (2025-12-22)
 

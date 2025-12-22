@@ -750,3 +750,7 @@ TEST_POSTGRES=1 TEST_CLICKHOUSE=1 TEST_TRINO=1 pnpm test:e2e
 # Run all checks
 ./all-checks.sh
 ```
+
+## Projects Using This Library
+
+- [indexless-query-benchmarks](https://github.com/damir-manapov/indexless-query-benchmarks) — Benchmark queries on Trino+Iceberg, PostgreSQL, and ClickHouse without indexes
