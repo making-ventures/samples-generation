@@ -76,7 +76,7 @@ export function generatorToSqliteExpr(
       const count = values.length;
       const cases = values
         .map((v, i) => {
-          const val = typeof v === "string" ? `'${v}'` : String(v);
+          const val = typeof v === "string" ? `'${v.replace(/'/g, "''")}'` : String(v);
           return `WHEN ${String(i)} THEN ${val}`;
         })
         .join(" ");

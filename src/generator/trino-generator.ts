@@ -79,7 +79,7 @@ export function generatorToTrinoExpr(
     case "choice": {
       const values = gen.values;
       const arr = values.map((v) =>
-        typeof v === "string" ? `'${v}'` : String(v)
+        typeof v === "string" ? `'${v.replace(/'/g, "''")}'` : String(v)
       );
       // Use element_at with 1-based index
       return `element_at(ARRAY[${arr.join(", ")}], CAST(floor(random() * ${String(arr.length)}) + 1 AS INTEGER))`;

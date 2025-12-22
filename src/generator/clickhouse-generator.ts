@@ -79,7 +79,7 @@ export function generatorToClickHouseExpr(
     case "choice": {
       const values = gen.values;
       const arr = values.map((v) =>
-        typeof v === "string" ? `'${v}'` : String(v)
+        typeof v === "string" ? `'${v.replace(/'/g, "\\'")}'` : String(v)
       );
       return `[${arr.join(", ")}][toUInt32(rand() % ${String(arr.length)}) + 1]`;
     }

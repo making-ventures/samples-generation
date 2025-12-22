@@ -76,7 +76,7 @@ export function generatorToPostgresExpr(
     case "choice": {
       const values = gen.values;
       const arr = values.map((v) =>
-        typeof v === "string" ? `'${v}'` : String(v)
+        typeof v === "string" ? `'${v.replace(/'/g, "''")}'` : String(v)
       );
       return `(ARRAY[${arr.join(", ")}])[floor(random() * ${String(arr.length)} + 1)::int]`;
     }
