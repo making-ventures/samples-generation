@@ -168,7 +168,13 @@ export abstract class BaseDataGenerator implements DataGenerator {
 
       await this.generateNative(table, currentBatchSize, currentSequence);
 
-      batchTimes.push(Date.now() - batchStart);
+      const batchMs = Date.now() - batchStart;
+      batchTimes.push(batchMs);
+
+      // Show last batch duration after final batch
+      if (showBatchProgress && remaining <= currentBatchSize) {
+        console.log(`[${this.name}] Last batch took: ${formatDuration(batchMs)}`);
+      }
 
       remaining -= currentBatchSize;
       currentSequence += currentBatchSize;
