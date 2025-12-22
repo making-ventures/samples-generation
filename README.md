@@ -33,7 +33,7 @@ npx tsx scripts/generate-all.ts --scenario simple -r 1_000_000_000 --clickhouse 
 
 #### 1 billion rows
 
-_ClickHouse:_ Generated in 11m 2s (generation: 6m 8s, optimisation: 4m 54s), table size: 23.81 GB
+_ClickHouse, 16 Gb Ram:_ Generated in 12m 44s (generation: 7m 10s, optimisation: 5m 34s), table size: 24.83 GB
 
 _Trino, 16 Gb Ram + spill by fte:_ Generated in 8m 40s (generation: 6m 48s, optimisation: 291ms), table size: 15.70 GB
 
