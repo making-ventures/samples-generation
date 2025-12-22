@@ -4,11 +4,11 @@
 
 ### Features
 
-* show last batch duration in progress output ([041a4ba](https://github.com/making-ventures/samples-generation/commit/041a4ba1c0249214572720d4b41531dc71f7f147))
+- show last batch duration in progress output ([041a4ba](https://github.com/making-ventures/samples-generation/commit/041a4ba1c0249214572720d4b41531dc71f7f147))
 
 ### Documentation
 
-* update ClickHouse simple 1B benchmark results ([de747a4](https://github.com/making-ventures/samples-generation/commit/de747a4a7e636148da13c5729d5b27ca85335fe9))
+- update ClickHouse simple 1B benchmark results ([de747a4](https://github.com/making-ventures/samples-generation/commit/de747a4a7e636148da13c5729d5b27ca85335fe9))
 
 ## [0.3.0](https://github.com/making-ventures/samples-generation/compare/v0.2.0...v0.3.0) (2025-12-21)
 

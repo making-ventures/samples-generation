@@ -16,15 +16,7 @@ pnpm audit --audit-level=moderate
 
 echo ""
 echo "=== Checking for outdated dependencies ==="
-outdated_output=$(pnpm outdated 2>&1) || true
-if echo "$outdated_output" | grep -q "│"; then
-  echo "$outdated_output"
-  echo ""
-  echo "ERROR: Outdated dependencies found"
-  exit 1
-else
-  echo "All dependencies are up to date"
-fi
+./renovate-check.sh
 
 echo ""
 echo "=== Health check passed ==="
