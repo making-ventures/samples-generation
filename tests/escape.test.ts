@@ -1,8 +1,12 @@
 import { describe, it, expect } from "vitest";
 import {
   escapePostgresIdentifier,
+  escapePostgresLiteral,
   escapeClickHouseIdentifier,
+  escapeClickHouseLiteral,
   escapeTrinoIdentifier,
+  escapeTrinoLiteral,
+  escapeSqliteLiteral,
 } from "../src/generator/escape.js";
 
 describe("escapePostgresIdentifier", () => {
@@ -87,5 +91,74 @@ describe("escapeTrinoIdentifier", () => {
   it("should handle reserved words", () => {
     expect(escapeTrinoIdentifier("select")).toBe('"select"');
     expect(escapeTrinoIdentifier("from")).toBe('"from"');
+  });
+});
+
+describe("escapePostgresLiteral", () => {
+  it("should wrap string in single quotes", () => {
+    expect(escapePostgresLiteral("hello")).toBe("'hello'");
+  });
+
+  it("should escape single quotes by doubling them", () => {
+    expect(escapePostgresLiteral("O'Brien")).toBe("'O''Brien'");
+    expect(escapePostgresLiteral("D'Arcy")).toBe("'D''Arcy'");
+  });
+
+  it("should handle multiple quotes", () => {
+    expect(escapePostgresLiteral("it's John's")).toBe("'it''s John''s'");
+  });
+
+  it("should handle empty string", () => {
+    expect(escapePostgresLiteral("")).toBe("''");
+  });
+});
+
+describe("escapeClickHouseLiteral", () => {
+  it("should wrap string in single quotes", () => {
+    expect(escapeClickHouseLiteral("hello")).toBe("'hello'");
+  });
+
+  it("should escape single quotes with backslash", () => {
+    expect(escapeClickHouseLiteral("O'Brien")).toBe("'O\\'Brien'");
+  });
+
+  it("should escape backslashes", () => {
+    expect(escapeClickHouseLiteral("path\\to\\file")).toBe(
+      "'path\\\\to\\\\file'"
+    );
+  });
+
+  it("should handle both quotes and backslashes", () => {
+    expect(escapeClickHouseLiteral("it's a \\test")).toBe(
+      "'it\\'s a \\\\test'"
+    );
+  });
+});
+
+describe("escapeTrinoLiteral", () => {
+  it("should wrap string in single quotes", () => {
+    expect(escapeTrinoLiteral("hello")).toBe("'hello'");
+  });
+
+  it("should escape single quotes by doubling them", () => {
+    expect(escapeTrinoLiteral("O'Brien")).toBe("'O''Brien'");
+  });
+
+  it("should handle empty string", () => {
+    expect(escapeTrinoLiteral("")).toBe("''");
+  });
+});
+
+describe("escapeSqliteLiteral", () => {
+  it("should wrap string in single quotes", () => {
+    expect(escapeSqliteLiteral("hello")).toBe("'hello'");
+  });
+
+  it("should escape single quotes by doubling them", () => {
+    expect(escapeSqliteLiteral("O'Brien")).toBe("'O''Brien'");
+  });
+
+  it("should handle empty string", () => {
+    expect(escapeSqliteLiteral("")).toBe("''");
   });
 });

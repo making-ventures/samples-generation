@@ -10,6 +10,7 @@ import type {
   SwapTransformation,
 } from "./types.js";
 import { BaseDataGenerator } from "./base-generator.js";
+import { escapeSqliteLiteral } from "./escape.js";
 import { getLookupTableName } from "./utils.js";
 
 export interface SQLiteConfig {
@@ -76,7 +77,8 @@ export function generatorToSqliteExpr(
       const count = values.length;
       const cases = values
         .map((v, i) => {
-          const val = typeof v === "string" ? `'${v.replace(/'/g, "''")}'` : String(v);
+          const val =
+            typeof v === "string" ? escapeSqliteLiteral(v) : String(v);
           return `WHEN ${String(i)} THEN ${val}`;
         })
         .join(" ");
@@ -90,7 +92,7 @@ export function generatorToSqliteExpr(
     }
     case "constant": {
       const val = gen.value;
-      return typeof val === "string" ? `'${val}'` : String(val);
+      return typeof val === "string" ? escapeSqliteLiteral(val) : String(val);
     }
     case "datetime": {
       const from = gen.from ?? new Date("2020-01-01");
@@ -174,7 +176,7 @@ export class SQLiteDataGenerator extends BaseDataGenerator {
         // Store as JSON array
         const jsonArray = JSON.stringify(gen.values);
         lookupCtes.push(
-          `${cteName}(arr) AS (SELECT '${jsonArray.replace(/'/g, "''")}')`
+          `${cteName}(arr) AS (SELECT ${escapeSqliteLiteral(jsonArray)})`
         );
       }
     }
@@ -302,7 +304,7 @@ export class SQLiteDataGenerator extends BaseDataGenerator {
         case "template": {
           const escapedCol = escapeId(t.column);
           // Replace {column_name} with column references
-          let expr = `'${t.template.replace(/'/g, "''")}'`;
+          let expr = escapeSqliteLiteral(t.template);
           const refs = t.template.match(/\{([^}]+)\}/g) ?? [];
           for (const ref of refs) {
             const colName = ref.slice(1, -1);

@@ -10,7 +10,10 @@ import type {
   SwapTransformation,
 } from "./types.js";
 import { BaseDataGenerator } from "./base-generator.js";
-import { escapeClickHouseIdentifier } from "./escape.js";
+import {
+  escapeClickHouseIdentifier,
+  escapeClickHouseLiteral,
+} from "./escape.js";
 import { getLookupTableName } from "./utils.js";
 
 export interface ClickHouseConfig {
@@ -79,7 +82,7 @@ export function generatorToClickHouseExpr(
     case "choice": {
       const values = gen.values;
       const arr = values.map((v) =>
-        typeof v === "string" ? `'${v.replace(/'/g, "\\'")}'` : String(v)
+        typeof v === "string" ? escapeClickHouseLiteral(v) : String(v)
       );
       return `[${arr.join(", ")}][toUInt32(rand() % ${String(arr.length)}) + 1]`;
     }
@@ -91,7 +94,9 @@ export function generatorToClickHouseExpr(
     }
     case "constant": {
       const val = gen.value;
-      return typeof val === "string" ? `'${val}'` : String(val);
+      return typeof val === "string"
+        ? escapeClickHouseLiteral(val)
+        : String(val);
     }
     case "datetime": {
       const from = gen.from ?? new Date("2020-01-01");
@@ -195,7 +200,7 @@ export class ClickHouseDataGenerator extends BaseDataGenerator {
         const gen = col.generator;
         const arrName = `${getLookupTableName(gen.values)}_arr`;
         const valuesLiteral = gen.values
-          .map((v) => `'${v.replace(/'/g, "\\'")}'`)
+          .map((v) => escapeClickHouseLiteral(v))
           .join(", ");
         arrayDefs.push(`[${valuesLiteral}] AS ${arrName}`);
       }
@@ -309,7 +314,7 @@ export class ClickHouseDataGenerator extends BaseDataGenerator {
         case "template": {
           const escapedCol = escapeClickHouseIdentifier(t.column);
           // Replace {column_name} with column references
-          let expr = `'${t.template.replace(/'/g, "\\'")}'`;
+          let expr = escapeClickHouseLiteral(t.template);
           const refs = t.template.match(/\{([^}]+)\}/g) ?? [];
           for (const ref of refs) {
             const colName = ref.slice(1, -1);

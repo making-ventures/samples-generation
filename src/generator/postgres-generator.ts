@@ -10,7 +10,7 @@ import type {
   SwapTransformation,
 } from "./types.js";
 import { BaseDataGenerator } from "./base-generator.js";
-import { escapePostgresIdentifier } from "./escape.js";
+import { escapePostgresIdentifier, escapePostgresLiteral } from "./escape.js";
 import { getLookupTableName } from "./utils.js";
 
 export interface PostgresConfig {
@@ -76,7 +76,7 @@ export function generatorToPostgresExpr(
     case "choice": {
       const values = gen.values;
       const arr = values.map((v) =>
-        typeof v === "string" ? `'${v.replace(/'/g, "''")}'` : String(v)
+        typeof v === "string" ? escapePostgresLiteral(v) : String(v)
       );
       return `(ARRAY[${arr.join(", ")}])[floor(random() * ${String(arr.length)} + 1)::int]`;
     }
@@ -87,7 +87,7 @@ export function generatorToPostgresExpr(
     }
     case "constant": {
       const val = gen.value;
-      return typeof val === "string" ? `'${val}'` : String(val);
+      return typeof val === "string" ? escapePostgresLiteral(val) : String(val);
     }
     case "datetime": {
       const from = gen.from ?? new Date("2020-01-01");
@@ -174,7 +174,7 @@ export class PostgresDataGenerator extends BaseDataGenerator {
         const gen = col.generator;
         const cteName = getLookupTableName(gen.values);
         const valuesLiteral = gen.values
-          .map((v) => `'${v.replace(/'/g, "''")}'`)
+          .map((v) => escapePostgresLiteral(v))
           .join(", ");
         lookupCtes.push(
           `${cteName} AS (SELECT ARRAY[${valuesLiteral}] AS arr)`
@@ -290,7 +290,7 @@ export class PostgresDataGenerator extends BaseDataGenerator {
         case "template": {
           const escapedCol = escapePostgresIdentifier(t.column);
           // Replace {column_name} with column references
-          let expr = `'${t.template.replace(/'/g, "''")}'`;
+          let expr = escapePostgresLiteral(t.template);
           const refs = t.template.match(/\{([^}]+)\}/g) ?? [];
           for (const ref of refs) {
             const colName = ref.slice(1, -1);
