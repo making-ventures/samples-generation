@@ -583,11 +583,18 @@ For custom queries, use the exported escape functions:
 
 ```typescript
 import {
+  // Identifier escaping (table/column names)
   escapePostgresIdentifier,
   escapeClickHouseIdentifier,
   escapeTrinoIdentifier,
-} from "./src/generator/index.js";
+  // Literal escaping (string values)
+  escapePostgresLiteral,
+  escapeClickHouseLiteral,
+  escapeTrinoLiteral,
+  escapeSqliteLiteral,
+} from "@mkven/samples-generation";
 
+// Identifier escaping (for table/column names)
 escapePostgresIdentifier("my-table"); // "my-table"
 escapePostgresIdentifier('table"name'); // "table""name"
 
@@ -596,6 +603,12 @@ escapeClickHouseIdentifier("table`name"); // `table``name`
 
 escapeTrinoIdentifier("samples"); // "samples"
 escapeTrinoIdentifier("samples$files"); // "samples$files" (for metadata tables)
+
+// Literal escaping (for string values in SQL)
+escapePostgresLiteral("O'Brien"); // 'O''Brien'
+escapeClickHouseLiteral("O'Brien"); // 'O\'Brien'
+escapeTrinoLiteral("O'Brien"); // 'O''Brien'
+escapeSqliteLiteral("O'Brien"); // 'O''Brien'
 ```
 
 ### Table Size

@@ -38,8 +38,12 @@ export { formatBytes, formatDuration, getLookupTableName } from "./utils.js";
 export { BaseDataGenerator } from "./base-generator.js";
 export {
   escapePostgresIdentifier,
+  escapePostgresLiteral,
   escapeClickHouseIdentifier,
+  escapeClickHouseLiteral,
   escapeTrinoIdentifier,
+  escapeTrinoLiteral,
+  escapeSqliteLiteral,
 } from "./escape.js";
 
 export {
