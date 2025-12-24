@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.4.4](https://github.com/making-ventures/samples-generation/compare/v0.4.2...v0.4.4) (2025-12-24)
+
+### Features
+
+- add batchDurations to GenerateResult ([9a5d501](https://github.com/making-ventures/samples-generation/commit/9a5d501))
+
+## [0.4.2](https://github.com/making-ventures/samples-generation/compare/v0.4.1...v0.4.2) (2025-12-23)
+
+### Features
+
+- log last batch duration after completion ([087293b](https://github.com/making-ventures/samples-generation/commit/087293b))
+
+### Documentation
+
+- add Projects Using This Library section ([ecd795c](https://github.com/making-ventures/samples-generation/commit/ecd795c))
+
 ## [0.4.1](https://github.com/making-ventures/samples-generation/compare/v0.4.0...v0.4.1) (2025-12-22)
 
 ### Bug Fixes
