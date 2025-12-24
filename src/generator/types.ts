@@ -223,6 +223,8 @@ export interface GenerateResult {
   optimizeMs: number;
   /** Number of batches used (1 if no batching) */
   batchCount: number;
+  /** Duration of each batch in milliseconds */
+  batchDurations: number[];
 }
 
 export interface TransformResult {

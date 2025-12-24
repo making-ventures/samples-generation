@@ -173,7 +173,9 @@ export abstract class BaseDataGenerator implements DataGenerator {
 
       // Show last batch duration after final batch
       if (showBatchProgress && remaining <= currentBatchSize) {
-        console.log(`[${this.name}] Last batch took: ${formatDuration(batchMs)}`);
+        console.log(
+          `[${this.name}] Last batch took: ${formatDuration(batchMs)}`
+        );
       }
 
       remaining -= currentBatchSize;
@@ -195,6 +197,7 @@ export abstract class BaseDataGenerator implements DataGenerator {
       generateMs,
       optimizeMs,
       batchCount,
+      batchDurations: batchTimes,
     };
   }
 
