@@ -1,6 +1,6 @@
 {
   "name": "@mkven/samples-generation",
-  "version": "0.4.3",
+  "version": "0.4.4",
   "description": "Generate sample data for PostgreSQL, ClickHouse, SQLite, and Trino with a unified interface",
   "author": "Damir Manapov",
   "license": "MIT",
